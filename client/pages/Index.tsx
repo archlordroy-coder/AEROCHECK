@@ -212,84 +212,91 @@ export default function Index() {
           </div>
         </div>
 
-        <div className="rounded-[2rem] border border-primary/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(231,244,247,0.94))] p-5 shadow-glow md:p-7 lg:ml-2">
-          <div className="flex items-center justify-between rounded-[1.5rem] border border-border/70 bg-white px-5 py-4 shadow-panel">
-            <div>
-              <p className="text-sm text-muted-foreground">État du dossier</p>
-              <p className="font-display text-2xl font-bold text-foreground">
-                Validation orchestrée
-              </p>
+        <div className="relative overflow-hidden rounded-[2rem] border border-primary/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(231,244,247,0.94))] p-5 shadow-glow md:p-7 lg:ml-2 lg:min-h-[640px]">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,hsla(184,_73%,_38%,_0.18),transparent_28%),radial-gradient(circle_at_bottom_left,hsla(213,_78%,_28%,_0.14),transparent_30%)]" />
+          <div className="relative flex h-full flex-col gap-5">
+            <div className="flex items-center justify-between rounded-[1.5rem] border border-border/70 bg-white/95 px-5 py-4 shadow-panel">
+              <div>
+                <p className="text-sm text-muted-foreground">Vue de conformité</p>
+                <p className="font-display text-2xl font-bold text-foreground">
+                  Validation orchestrée
+                </p>
+              </div>
+              <div className="rounded-full bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-700">
+                Conforme si 3/3 pièces actives
+              </div>
             </div>
-            <div className="rounded-full bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-700">
-              Conforme si 3/3 pièces actives
+
+            <div className="grid flex-1 gap-5 lg:grid-rows-[1fr_auto]">
+              <article className="flex min-h-[260px] items-center justify-center rounded-[1.75rem] border border-border/70 bg-white/90 p-6 shadow-panel">
+                <div className="relative flex h-56 w-56 items-center justify-center rounded-full border border-primary/15 bg-[radial-gradient(circle,rgba(255,255,255,1),rgba(231,244,247,0.96))]">
+                  <div className="absolute inset-6 rounded-full border border-dashed border-primary/20" />
+                  <div className="absolute inset-14 rounded-full bg-[linear-gradient(135deg,hsl(var(--primary)),hsl(var(--accent)))] shadow-glow" />
+                  <div className="relative text-center text-white">
+                    <p className="text-xs font-semibold uppercase tracking-[0.35em] text-white/75">
+                      AEROCHECK
+                    </p>
+                    <p className="mt-2 font-display text-3xl font-black tracking-tight">
+                      3/3
+                    </p>
+                    <p className="mt-1 text-sm text-white/80">
+                      pièces synchronisées
+                    </p>
+                  </div>
+                  <div className="absolute -left-2 top-8 rounded-2xl border border-border bg-white px-4 py-3 text-left shadow-panel">
+                    <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+                      Certificat
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      1 à 2 ans
+                    </p>
+                  </div>
+                  <div className="absolute -right-3 top-14 rounded-2xl border border-border bg-white px-4 py-3 text-left shadow-panel">
+                    <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+                      Anglais
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      3 / 6 ans / vie
+                    </p>
+                  </div>
+                  <div className="absolute bottom-6 left-6 rounded-2xl border border-border bg-white px-4 py-3 text-left shadow-panel">
+                    <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+                      Compétences
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      12 mois
+                    </p>
+                  </div>
+                </div>
+              </article>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-3xl border border-border/70 bg-white/90 p-4 shadow-panel">
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+                    Étape 1
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-foreground">
+                    Soumission agent
+                  </p>
+                </div>
+                <div className="rounded-3xl border border-border/70 bg-white/90 p-4 shadow-panel">
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+                    Étape 2
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-foreground">
+                    Revue QIP
+                  </p>
+                </div>
+                <div className="rounded-3xl border border-border/70 bg-white/90 p-4 shadow-panel">
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+                    Étape 3
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-foreground">
+                    Validation DLAA
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
-
-          <div className="mt-5 grid gap-4">
-            <article className="rounded-[1.5rem] border border-border/70 bg-white p-5">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    Certificat médical
-                  </p>
-                  <p className="mt-1 text-lg font-semibold text-foreground">
-                    Validité pilotée selon l’âge
-                  </p>
-                </div>
-                <div className="rounded-full bg-secondary px-3 py-1 text-sm font-semibold text-secondary-foreground">
-                  1 à 2 ans
-                </div>
-              </div>
-              <div className="mt-4 h-2 rounded-full bg-muted">
-                <div className="h-2 w-[78%] rounded-full bg-primary" />
-              </div>
-            </article>
-
-            <article className="rounded-[1.5rem] border border-border/70 bg-white p-5">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Test d’anglais</p>
-                  <p className="mt-1 text-lg font-semibold text-foreground">
-                    Durée variable selon la note
-                  </p>
-                </div>
-                <div className="rounded-full bg-secondary px-3 py-1 text-sm font-semibold text-secondary-foreground">
-                  3, 6 ans ou à vie
-                </div>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {["< 4 : échec", "4 : 3 ans", "5 : 6 ans", "6 : à vie"].map((item) => (
-                  <span
-                    key={item}
-                    className="rounded-full border border-border bg-background px-3 py-1 text-xs font-semibold text-foreground"
-                  >
-                    {item}
-                  </span>
-                ))}
-              </div>
-            </article>
-
-            <article className="rounded-[1.5rem] border border-border/70 bg-[linear-gradient(135deg,hsl(var(--primary))/0.95,hsl(var(--accent))/0.95)] p-5 text-white">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm text-white/70">
-                    Notification automatisée
-                  </p>
-                  <p className="mt-1 text-lg font-semibold">
-                    Rejet immédiat ou délivrance finale confirmée par e-mail.
-                  </p>
-                </div>
-                <MailCheck className="h-6 w-6 shrink-0 text-white" />
-              </div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl bg-white/10 px-4 py-3 text-sm">
-                  Si rejet : notification instantanée au demandeur.
-                </div>
-                <div className="rounded-2xl bg-white/10 px-4 py-3 text-sm">
-                  Si validation QIP : transmission DLAA automatique.
-                </div>
-              </div>
-            </article>
           </div>
         </div>
       </section>

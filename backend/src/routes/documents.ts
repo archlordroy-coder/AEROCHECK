@@ -400,4 +400,65 @@ router.delete(
   }
 );
 
+// Preview document - serve file for viewing
+router.get('/:id/preview', authenticate, async (req: AuthRequest, res: Response, next) => {
+  try {
+    const document = await prisma.document.findUnique({
+      where: { id: req.params.id as string },
+      include: { agent: true }
+    });
+
+    if (!document) {
+      throw new AppError('Document non trouve', 404);
+    }
+
+    // Check access permissions
+    const user = req.user!;
+    if (user.role === 'AGENT' && document.agent.userId !== user.id) {
+      throw new AppError('Acces refuse', 403);
+    }
+
+    // Build file path from document filePath
+    const filePath = path.join(process.cwd(), document.filePath.replace('/uploads/', 'uploads/'));
+    
+    if (!fs.existsSync(filePath)) {
+      // Return placeholder info if file doesn't exist yet
+      res.json({
+        success: true,
+        data: {
+          id: document.id,
+          fileName: document.fileName,
+          filePath: document.filePath,
+          type: document.type,
+          status: document.status,
+          previewAvailable: false,
+          message: 'Fichier physique non disponible (demo mode)'
+        }
+      });
+      return;
+    }
+
+    // Determine content type
+    const ext = path.extname(filePath).toLowerCase();
+    const contentTypeMap: Record<string, string> = {
+      '.pdf': 'application/pdf',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.gif': 'image/gif',
+      '.svg': 'image/svg+xml'
+    };
+    const contentType = contentTypeMap[ext] || 'application/octet-stream';
+
+    // Stream the file
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `inline; filename="${document.fileName}"`);
+    
+    const stream = fs.createReadStream(filePath);
+    stream.pipe(res);
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

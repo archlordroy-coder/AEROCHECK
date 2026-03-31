@@ -139,6 +139,7 @@ export interface AuthResponse {
 // Stats
 export interface DashboardStats {
   totalAgents: number;
+  totalDocuments: number;
   documentsEnAttente: number;
   qipValides: number;
   licencesActives: number;
@@ -189,3 +190,66 @@ export const ROLE_LABELS: Record<Role, string> = {
   DNA: "Superviseur DNA",
   SUPER_ADMIN: "Super Administrateur"
 };
+
+// African Countries - ASECNA Member States and other African countries
+export const AFRICAN_COUNTRIES = [
+  { code: 'BENIN', name: 'Bénin', flag: '🇧🇯' },
+  { code: 'BURKINA_FASO', name: 'Burkina Faso', flag: '🇧🇫' },
+  { code: 'CAMEROUN', name: 'Cameroun', flag: '🇨🇲' },
+  { code: 'CENTRAFRIQUE', name: 'Centrafrique', flag: '🇨🇫' },
+  { code: 'COMORES', name: 'Comores', flag: '🇰🇲' },
+  { code: 'CONGO', name: 'Congo', flag: '🇨🇬' },
+  { code: 'COTE_D_IVOIRE', name: "Côte d'Ivoire", flag: '🇨🇮' },
+  { code: 'DJIBOUTI', name: 'Djibouti', flag: '🇩🇯' },
+  { code: 'GABON', name: 'Gabon', flag: '🇬🇦' },
+  { code: 'GUINEE_BISSAU', name: 'Guinée-Bissau', flag: '🇬🇼' },
+  { code: 'GUINEE_CONAKRY', name: 'Guinée-Conakry', flag: '🇬🇳' },
+  { code: 'MADAGASCAR', name: 'Madagascar', flag: '🇲🇬' },
+  { code: 'MALI', name: 'Mali', flag: '🇲🇱' },
+  { code: 'MAURITANIE', name: 'Mauritanie', flag: '🇲🇷' },
+  { code: 'NIGER', name: 'Niger', flag: '🇳🇪' },
+  { code: 'SENEGAL', name: 'Sénégal', flag: '🇸🇳' },
+  { code: 'TCHAD', name: 'Tchad', flag: '🇹🇩' },
+  { code: 'TOGO', name: 'Togo', flag: '🇹🇬' },
+  // Additional African countries
+  { code: 'ALGERIE', name: 'Algérie', flag: '🇩🇿' },
+  { code: 'ANGOLA', name: 'Angola', flag: '🇦🇴' },
+  { code: 'BOTSWANA', name: 'Botswana', flag: '🇧🇼' },
+  { code: 'BURUNDI', name: 'Burundi', flag: '🇧🇮' },
+  { code: 'CAP_VERT', name: 'Cap-Vert', flag: '🇨🇻' },
+  { code: 'EGYPTE', name: 'Égypte', flag: '🇪🇬' },
+  { code: 'ERYTHREE', name: 'Érythrée', flag: '🇪🇷' },
+  { code: 'ESWATINI', name: 'Eswatini', flag: '🇸🇿' },
+  { code: 'ETHIOPIE', name: 'Éthiopie', flag: '🇪🇹' },
+  { code: 'GAMBIE', name: 'Gambie', flag: '🇬🇲' },
+  { code: 'GHANA', name: 'Ghana', flag: '🇬🇭' },
+  { code: 'GUINEE_EQUATORIALE', name: 'Guinée équatoriale', flag: '🇬🇶' },
+  { code: 'KENYA', name: 'Kenya', flag: '🇰🇪' },
+  { code: 'LESOTHO', name: 'Lesotho', flag: '🇱🇸' },
+  { code: 'LIBERIA', name: 'Libéria', flag: '🇱🇷' },
+  { code: 'LIBYE', name: 'Libye', flag: '🇱🇾' },
+  { code: 'MAROC', name: 'Maroc', flag: '🇲🇦' },
+  { code: 'MALAWI', name: 'Malawi', flag: '🇲🇼' },
+  { code: 'MAURICE', name: 'Maurice', flag: '🇲🇺' },
+  { code: 'MOZAMBIQUE', name: 'Mozambique', flag: '🇲🇿' },
+  { code: 'NAMIBIE', name: 'Namibie', flag: '🇳🇦' },
+  { code: 'NIGERIA', name: 'Nigéria', flag: '🇳🇬' },
+  { code: 'OUGANDA', name: 'Ouganda', flag: '🇺🇬' },
+  { code: 'RWANDA', name: 'Rwanda', flag: '🇷🇼' },
+  { code: 'SAO_TOME', name: 'Sao Tomé-et-Principe', flag: '🇸🇹' },
+  { code: 'SEYCHELLES', name: 'Seychelles', flag: '🇸🇨' },
+  { code: 'SIERRA_LEONE', name: 'Sierra Leone', flag: '🇸🇱' },
+  { code: 'SOMALIE', name: 'Somalie', flag: '🇸🇴' },
+  { code: 'SOUDAN', name: 'Soudan', flag: '🇸🇩' },
+  { code: 'SOUDAN_DU_SUD', name: 'Soudan du Sud', flag: '🇸🇸' },
+  { code: 'TANZANIE', name: 'Tanzanie', flag: '🇹🇿' },
+  { code: 'ZAMBIE', name: 'Zambie', flag: '🇿🇲' },
+  { code: 'ZIMBABWE', name: 'Zimbabwe', flag: '🇿🇼' }
+] as const;
+
+export type AfricanCountryCode = typeof AFRICAN_COUNTRIES[number]['code'];
+
+export const COUNTRY_LABELS: Record<string, string> = AFRICAN_COUNTRIES.reduce((acc, country) => {
+  acc[country.code] = `${country.flag} ${country.name}`;
+  return acc;
+}, {} as Record<string, string>);

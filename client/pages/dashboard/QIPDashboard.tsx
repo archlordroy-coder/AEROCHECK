@@ -12,13 +12,15 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
+import { DocumentPreview } from '@/components/ui/document-preview';
 import { 
   FileSearch, 
   Clock, 
   CheckCircle, 
   XCircle,
   ArrowRight,
-  Users
+  Users,
+  Eye
 } from 'lucide-react';
 import { DOCUMENT_TYPE_LABELS } from '@shared/types';
 import type { Document } from '@shared/types';
@@ -32,6 +34,8 @@ export default function QIPDashboard() {
     totalDocuments: number;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -178,12 +182,25 @@ export default function QIPDashboard() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button asChild size="sm">
-                        <Link to={`/qip/verify/${doc.id}`}>
-                          Verifier
-                          <ArrowRight className="ml-2 h-4 w-4" />
-                        </Link>
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            setSelectedDoc(doc);
+                            setIsPreviewOpen(true);
+                          }}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Aperçu
+                        </Button>
+                        <Button asChild size="sm">
+                          <Link to={`/qip/verify/${doc.id}`}>
+                            Vérifier
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -192,6 +209,16 @@ export default function QIPDashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* Document Preview Modal */}
+      <DocumentPreview
+        document={selectedDoc}
+        isOpen={isPreviewOpen}
+        onClose={() => {
+          setIsPreviewOpen(false);
+          setSelectedDoc(null);
+        }}
+      />
     </div>
   );
 }

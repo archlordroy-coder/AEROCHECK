@@ -13,8 +13,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import appLogo from '@/logo/logosansfond.png';
 import {
-  Plane,
   LayoutDashboard,
   User,
   FileText,
@@ -86,8 +86,12 @@ export default function DashboardLayout() {
       )}>
         {/* Logo */}
         <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-            <Plane className="h-5 w-5" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground overflow-hidden">
+            <img
+              src={appLogo}
+              alt="Logo AEROCHECK"
+              className="h-8 w-8 object-contain"
+            />
           </div>
           <div>
             <h1 className="text-lg font-bold">AEROCHECK</h1>

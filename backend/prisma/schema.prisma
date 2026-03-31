@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id          String       @id @default(cuid())
+  email       String       @unique
+  password    String
+  role        String       @default("AGENT")
+  firstName   String
+  lastName    String
+  phone       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  agent       Agent?
+  validations Validation[]
+}
+
+model Agent {
+  id            String     @id @default(cuid())
+  userId        String     @unique
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  matricule     String     @unique
+  dateNaissance DateTime
+  lieuNaissance String
+  nationalite   String
+  adresse       String
+  fonction      String
+  employeur     String
+  aeroport      String
+  zoneAcces     String     @default("[]")
+  status        String     @default("EN_ATTENTE")
+  documents     Document[]
+  licenses      License[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+model Document {
+  id          String       @id @default(cuid())
+  agentId     String
+  agent       Agent        @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  type        String
+  fileName    String
+  filePath    String
+  status      String       @default("EN_ATTENTE")
+  validations Validation[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Validation {
+  id          String   @id @default(cuid())
+  documentId  String
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  validatorId String
+  validator   User     @relation(fields: [validatorId], references: [id])
+  status      String
+  comment     String?
+  createdAt   DateTime @default(now())
+}
+
+model License {
+  id             String   @id @default(cuid())
+  agentId        String
+  agent          Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  numero         String   @unique
+  dateEmission   DateTime
+  dateExpiration DateTime
+  status         String   @default("ACTIVE")
+  qrCode         String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}

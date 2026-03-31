@@ -3,11 +3,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "npm run build:client && npm run build:server",
-    "build:client": "vite build",
+    "dev": "npm run dev:frontend",
+    "dev:frontend": "vite",
+    "dev:backend": "tsx server/dev.ts",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "vite build",
     "build:server": "vite build --config vite.config.server.ts",
-    "start": "node dist/server/node-build.mjs",
+    "build:backend": "vite build --config vite.config.server.ts",
+    "start": "bash ./scripts/start.sh",
+    "start:frontend": "vite preview --host 0.0.0.0 --port 8080",
+    "start:backend": "node dist/server/dev.mjs",
+    "start:prod": "npm run start:backend",
     "test": "vitest --run",
     "format.fix": "prettier --write .",
     "typecheck": "tsc"
@@ -94,7 +100,7 @@
   "packageManager": "pnpm@10.14.0+sha512.ad27a79641b49c3e481a16a805baa71817a04bbe06a38d17e60e2eaee83f6a146c6a688125f5792e48dd5ba30e7da52a5cda4c3992b9ccf333f9ce223af84748",
   "pkg": {
     "assets": [
-      "dist/spa/*"
+      "dist/frontend/*"
     ],
     "scripts": [
       "dist/server/**/*.js"

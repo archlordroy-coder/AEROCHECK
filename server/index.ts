@@ -1,23 +1,32 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import { handleDemo } from "./routes/demo";
+import { overviewData } from "./data";
 
 export function createServer() {
   const app = express();
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:8080";
 
-  // Middleware
-  app.use(cors());
+  app.use(
+    cors({
+      origin: frontendUrl,
+      credentials: true,
+    }),
+  );
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
-  // Example API routes
   app.get("/api/ping", (_req, res) => {
-    const ping = process.env.PING_MESSAGE ?? "ping";
-    res.json({ message: ping });
+    res.json({
+      message: process.env.PING_MESSAGE ?? "AEROCHECK API ready",
+      status: "ok",
+      apiBaseUrl: process.env.API_BASE_URL || `http://localhost:${process.env.API_PORT || 3000}`,
+    });
   });
 
-  app.get("/api/demo", handleDemo);
+  app.get("/api/overview", (_req, res) => {
+    res.status(200).json(overviewData);
+  });
 
   return app;
 }

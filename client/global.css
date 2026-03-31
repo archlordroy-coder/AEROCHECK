@@ -97,6 +97,7 @@
 
   html {
     scroll-behavior: smooth;
+    height: 100%;
   }
 
   body {
@@ -112,10 +113,13 @@
         transparent 30%
       );
     min-height: 100vh;
+    height: 100%;
+    overflow: hidden;
   }
 
   #root {
     min-height: 100vh;
+    height: 100vh;
   }
 
   ::selection {
@@ -136,5 +140,10 @@
   code {
     overflow-x: auto;
     white-space: pre;
+  }
+
+  img {
+    user-select: none;
+    -webkit-user-drag: none;
   }
 }

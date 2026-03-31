@@ -7,9 +7,14 @@ export default {
   theme: {
     container: {
       center: true,
-      padding: "2rem",
+      padding: {
+        DEFAULT: "1.25rem",
+        sm: "1.5rem",
+        lg: "2rem",
+        xl: "2.5rem",
+      },
       screens: {
-        "2xl": "1400px",
+        "2xl": "1320px",
       },
     },
     extend: {
@@ -47,6 +52,10 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        surface: {
+          DEFAULT: "hsl(var(--surface))",
+          foreground: "hsl(var(--surface-foreground))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -58,10 +67,23 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
       },
+      fontFamily: {
+        sans: ["Inter", "sans-serif"],
+        display: ["Manrope", "Inter", "sans-serif"],
+      },
       borderRadius: {
         lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        md: "calc(var(--radius) - 4px)",
+        sm: "calc(var(--radius) - 8px)",
+        xl: "calc(var(--radius) + 0.5rem)",
+      },
+      boxShadow: {
+        panel: "0 18px 45px -24px rgba(15, 23, 42, 0.25)",
+        glow: "0 24px 70px -30px rgba(8, 47, 73, 0.45)",
+      },
+      backgroundImage: {
+        "hero-mesh":
+          "radial-gradient(circle at top left, rgba(10, 132, 161, 0.16), transparent 34%), radial-gradient(circle at top right, rgba(17, 76, 147, 0.16), transparent 32%)",
       },
       keyframes: {
         "accordion-down": {

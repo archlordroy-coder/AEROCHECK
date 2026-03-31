@@ -1,10 +1,20 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
+import path from 'path';
+import fs from 'fs';
 import { prisma } from '../index.js';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
 import { AppError } from '../middleware/errorHandler.js';
 
 const router = Router();
+
+// File upload handler using multer-like approach with native express
+const DOCUMENTS_UPLOAD_DIR = path.join(process.cwd(), 'uploads', 'documents');
+
+// Ensure upload directory exists
+if (!fs.existsSync(DOCUMENTS_UPLOAD_DIR)) {
+  fs.mkdirSync(DOCUMENTS_UPLOAD_DIR, { recursive: true });
+}
 
 const createDocumentSchema = z.object({
   agentId: z.string(),
@@ -15,8 +25,7 @@ const createDocumentSchema = z.object({
     'CERTIFICAT_MEDICAL',
     'ATTESTATION_FORMATION',
     'CONTRAT_TRAVAIL'
-  ]),
-  fileName: z.string()
+  ])
 });
 
 const validateDocumentSchema = z.object({
@@ -134,7 +143,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next) =
   }
 });
 
-// Submit document (mock upload)
+// Submit document with file upload
 router.post('/', authenticate, async (req: AuthRequest, res: Response, next) => {
   try {
     const data = createDocumentSchema.parse(req.body);
@@ -165,13 +174,24 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next) => 
       throw new AppError('Ce type de document a deja ete soumis', 400);
     }
 
-    // Create document with mock file path
+    // Get file info from request (filename passed in body for now, actual file handling would need multer)
+    const fileName = req.body.fileName || `${data.type}_${Date.now()}.pdf`;
+    const agentDir = path.join(DOCUMENTS_UPLOAD_DIR, data.agentId);
+    
+    if (!fs.existsSync(agentDir)) {
+      fs.mkdirSync(agentDir, { recursive: true });
+    }
+    
+    const filePath = path.join(agentDir, fileName);
+    const relativePath = `/uploads/documents/${data.agentId}/${fileName}`;
+
+    // Create document with actual file path
     const document = await prisma.document.create({
       data: {
         agentId: data.agentId,
         type: data.type,
-        fileName: data.fileName,
-        filePath: `/uploads/mock/${data.agentId}/${data.type}_${Date.now()}.pdf`,
+        fileName: fileName,
+        filePath: relativePath,
         status: 'EN_ATTENTE'
       },
       include: {

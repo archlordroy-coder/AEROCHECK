@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import fs from 'fs';
 import { PrismaClient } from '@prisma/client';
 import authRoutes from './routes/auth.js';
 import agentRoutes from './routes/agents.js';
@@ -16,6 +18,12 @@ export const prisma = new PrismaClient();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
 // Middleware
 app.use(cors({
   origin: ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:8080'],
@@ -23,9 +31,12 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Static files for uploads
+app.use('/uploads', express.static(uploadsDir));
+
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), uploads: uploadsDir });
 });
 
 // Routes

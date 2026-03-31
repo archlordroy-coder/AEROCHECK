@@ -12,8 +12,10 @@ import {
   ShieldCheck,
   ShieldEllipsis,
   Workflow,
+  LogOut,
 } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 
 const navigation = [
   {
@@ -64,6 +66,7 @@ const navItemClassName = ({ isActive }: { isActive: boolean }) =>
 
 export default function SiteLayout() {
   const location = useLocation();
+  const { user, logout } = useAuth();
   const current =
     navigation.find(
       (item) =>
@@ -129,11 +132,10 @@ export default function SiteLayout() {
                 Statut
               </div>
               <p className="mt-3 text-sm font-semibold text-white">
-                Frontend + backend separes
+                Base de donnees activee
               </p>
               <p className="mt-2 text-sm leading-7 text-slate-200/80">
-                La structure est prete pour des sessions, une base de donnees,
-                l'audit et les jobs de notification.
+                Le systeme est maintenant connecte a une base SQLite avec support complet des roles et circuits.
               </p>
             </div>
           </div>
@@ -187,14 +189,33 @@ export default function SiteLayout() {
                     className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border bg-white px-4 py-3 text-sm font-semibold text-foreground shadow-panel transition-colors hover:bg-muted"
                   >
                     <BellRing className="h-4 w-4 text-primary" />
-                    3 alertes
+                    0 alerte
                   </button>
-                  <div className="rounded-2xl border border-border bg-slate-950 px-4 py-3 text-white shadow-panel">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">
-                      Session
-                    </p>
-                    <p className="mt-1 text-sm font-semibold">Super admin</p>
-                  </div>
+
+                  {user ? (
+                    <div className="flex gap-2">
+                      <div className="rounded-2xl border border-border bg-slate-950 px-4 py-3 text-white shadow-panel min-w-[120px]">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">
+                          Session
+                        </p>
+                        <p className="mt-1 text-sm font-semibold">{user.firstName} ({user.role})</p>
+                      </div>
+                      <button
+                        onClick={logout}
+                        className="inline-flex items-center justify-center h-12 w-12 rounded-2xl border border-border bg-white text-red-500 shadow-panel transition-colors hover:bg-red-50"
+                        title="Deconnexion"
+                      >
+                        <LogOut className="h-5 w-5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <NavLink
+                      to="/login"
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-panel transition-colors hover:bg-primary/90"
+                    >
+                      Connexion
+                    </NavLink>
+                  )}
                 </div>
               </div>
 
@@ -228,46 +249,6 @@ export default function SiteLayout() {
                       </NavLink>
                     ))}
                   </nav>
-                </div>
-
-                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
-                  <div className="rounded-2xl border border-border bg-white px-4 py-3 shadow-panel">
-                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                      <Activity className="h-3.5 w-3.5" />
-                      Systeme
-                    </div>
-                    <p className="mt-2 text-sm font-semibold text-foreground">
-                      Sessions et API decouplees
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-border bg-white px-4 py-3 shadow-panel">
-                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                      <ShieldCheck className="h-3.5 w-3.5" />
-                      Controle
-                    </div>
-                    <p className="mt-2 text-sm font-semibold text-foreground">
-                      RBAC detaille et audit
-                    </p>
-                  </div>
-                  {quickOptions.map((option) => (
-                    <button
-                      key={option.label}
-                      type="button"
-                      className="flex items-center gap-3 rounded-2xl border border-border bg-white px-4 py-3 text-left shadow-panel transition-colors hover:bg-muted"
-                    >
-                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                        <option.icon className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">
-                          {option.label}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {option.detail}
-                        </p>
-                      </div>
-                    </button>
-                  ))}
                 </div>
               </div>
             </div>

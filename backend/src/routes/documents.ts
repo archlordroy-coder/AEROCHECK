@@ -51,22 +51,32 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   // QIP: see EN_ATTENTE documents from agents in their country
   if (user.role === 'QIP') {
     where.status = 'EN_ATTENTE';
+    console.log('[QIP] User pays:', user.pays, 'User ID:', user.id);
     // Get agents from this country (airport starting with DAKAR for Senegal, ABIDJAN for CI)
     const countryAirportPrefix = user.pays === 'SENEGAL' ? 'DAKAR' : 'ABIDJAN';
+    console.log('[QIP] Looking for agents with airport starting with:', countryAirportPrefix);
     const agents = await prisma.agent.findMany({
       where: { aeroport: { startsWith: countryAirportPrefix } },
-      select: { id: true }
+      select: { id: true, aeroport: true }
     });
-    where.agentId = agents.length > 0 ? { in: agents.map(a => a.id) } : undefined;
+    console.log('[QIP] Found agents:', agents.length, agents.map(a => ({ id: a.id.substring(0,8), aeroport: a.aeroport })));
+    if (agents.length > 0) {
+      where.agentId = { in: agents.map(a => a.id) };
+    }
+    // If no agents found, don't filter by agentId - show all EN_ATTENTE docs
+    console.log('[QIP] Query where clause:', JSON.stringify(where));
   }
 
   // DLAA: see documents from their airport
   if (user.role === 'DLAA') {
+    console.log('[DLAA] User aeroport:', user.aeroport);
     const agents = await prisma.agent.findMany({
       where: { aeroport: user.aeroport },
       select: { id: true }
     });
-    where.agentId = agents.length > 0 ? { in: agents.map(a => a.id) } : undefined;
+    if (agents.length > 0) {
+      where.agentId = { in: agents.map(a => a.id) };
+    }
   }
 
   // Agents can only see their own documents
@@ -81,6 +91,8 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
       return;
     }
   }
+
+  console.log('[Documents] Final where clause:', JSON.stringify(where));
 
   const [documents, total] = await Promise.all([
     prisma.document.findMany({
@@ -108,6 +120,8 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
     }),
     prisma.document.count({ where })
   ]);
+
+  console.log(`[Documents] Found ${documents.length} documents, total: ${total}`);
 
   res.json({
     success: true,

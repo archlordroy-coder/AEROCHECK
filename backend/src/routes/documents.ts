@@ -33,7 +33,7 @@ const validateDocumentSchema = z.object({
   comment: z.string().optional()
 });
 
-// List documents
+// List documents - with role-based filtering
 router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   const { agentId, status, type, page = '1', limit = '10' } = req.query;
   
@@ -47,27 +47,29 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   if (status) where.status = status;
   if (type) where.type = type;
 
-  // QIP can only see documents pending validation
-  if (req.user!.role === 'QIP') {
+  const user = req.user!;
+
+  // QIP: see EN_ATTENTE documents from their country (pays)
+  if (user.role === 'QIP') {
     where.status = 'EN_ATTENTE';
+    where.agent = { aeroport: { contains: user.pays === 'SENEGAL' ? 'DAKAR' : 'ABIDJAN' } };
+  }
+
+  // DLAA: see QIP_VALIDE documents from their airport
+  if (user.role === 'DLAA') {
+    where.status = 'VALIDE'; // After QIP validation
+    where.agent = { aeroport: user.aeroport };
   }
 
   // Agents can only see their own documents
-  if (req.user!.role === 'AGENT') {
+  if (user.role === 'AGENT') {
     const agent = await prisma.agent.findUnique({
-      where: { userId: req.user!.id }
+      where: { userId: user.id }
     });
     if (agent) {
       where.agentId = agent.id;
     } else {
-      res.json({
-        success: true,
-        data: [],
-        total: 0,
-        page: pageNum,
-        limit: limitNum,
-        totalPages: 0
-      });
+      res.json({ success: true, data: [], total: 0, page: pageNum, limit: limitNum, totalPages: 0 });
       return;
     }
   }

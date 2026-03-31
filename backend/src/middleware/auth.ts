@@ -13,6 +13,8 @@ export interface AuthRequest extends Request {
     firstName: string;
     lastName: string;
   };
+  headers: Request['headers'];
+  params: Request['params'];
 }
 
 export const authenticate = async (

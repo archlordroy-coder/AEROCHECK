@@ -1,0 +1,343 @@
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Plane, 
+  Shield, 
+  FileCheck, 
+  Award, 
+  Users, 
+  CheckCircle, 
+  ArrowRight,
+  Building2,
+  Globe,
+  Clock
+} from 'lucide-react';
+
+export default function LandingPage() {
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto flex h-16 items-center justify-between px-4">
+          <div className="flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
+              <Plane className="h-6 w-6 text-primary-foreground" />
+            </div>
+            <span className="text-xl font-bold">AEROCHECK</span>
+          </div>
+          <nav className="hidden md:flex items-center gap-6">
+            <a href="#fonctionnalites" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Fonctionnalites
+            </a>
+            <a href="#processus" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Processus
+            </a>
+            <a href="#aeroports" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Aeroports
+            </a>
+          </nav>
+          <div className="flex items-center gap-4">
+            <Link to="/login">
+              <Button variant="ghost">Connexion</Button>
+            </Link>
+            <Link to="/register">
+              <Button>S&apos;inscrire</Button>
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <section className="relative overflow-hidden py-20 md:py-32">
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent" />
+        <div className="container mx-auto px-4 relative">
+          <div className="max-w-3xl mx-auto text-center">
+            <Badge className="mb-4" variant="secondary">
+              Plateforme Officielle ASECNA
+            </Badge>
+            <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 text-balance">
+              Gestion des Licences Aeroportuaires
+            </h1>
+            <p className="text-xl text-muted-foreground mb-8 text-pretty">
+              La plateforme digitale de gestion des licences pour les agents aeroportuaires 
+              de la zone ASECNA. Simplifiez vos demarches administratives.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link to="/register">
+                <Button size="lg" className="w-full sm:w-auto">
+                  Commencer l&apos;inscription
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+              <Link to="/login">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto">
+                  Acceder a mon espace
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="py-12 border-y bg-muted/50">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold text-primary">17</div>
+              <div className="text-sm text-muted-foreground">Pays Membres</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold text-primary">25+</div>
+              <div className="text-sm text-muted-foreground">Aeroports</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold text-primary">10K+</div>
+              <div className="text-sm text-muted-foreground">Agents Licencies</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold text-primary">98%</div>
+              <div className="text-sm text-muted-foreground">Taux de Satisfaction</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section id="fonctionnalites" className="py-20">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold mb-4">Fonctionnalites Principales</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Une solution complete pour la gestion des licences aeroportuaires
+            </p>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Card>
+              <CardHeader>
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <Users className="h-6 w-6 text-primary" />
+                </div>
+                <CardTitle>Inscription en Ligne</CardTitle>
+                <CardDescription>
+                  Creez votre profil agent et soumettez vos documents en toute simplicite
+                </CardDescription>
+              </CardHeader>
+            </Card>
+            <Card>
+              <CardHeader>
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <FileCheck className="h-6 w-6 text-primary" />
+                </div>
+                <CardTitle>Verification QIP</CardTitle>
+                <CardDescription>
+                  Suivi en temps reel de la verification de vos documents par le QIP
+                </CardDescription>
+              </CardHeader>
+            </Card>
+            <Card>
+              <CardHeader>
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <Award className="h-6 w-6 text-primary" />
+                </div>
+                <CardTitle>Emission DLAA</CardTitle>
+                <CardDescription>
+                  Obtention rapide de votre licence aeroportuaire officielle
+                </CardDescription>
+              </CardHeader>
+            </Card>
+            <Card>
+              <CardHeader>
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <Shield className="h-6 w-6 text-primary" />
+                </div>
+                <CardTitle>Securite Renforcee</CardTitle>
+                <CardDescription>
+                  Vos donnees sont protegees selon les normes internationales
+                </CardDescription>
+              </CardHeader>
+            </Card>
+            <Card>
+              <CardHeader>
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <Clock className="h-6 w-6 text-primary" />
+                </div>
+                <CardTitle>Suivi en Temps Reel</CardTitle>
+                <CardDescription>
+                  Suivez l&apos;etat de votre dossier a chaque etape du processus
+                </CardDescription>
+              </CardHeader>
+            </Card>
+            <Card>
+              <CardHeader>
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <Globe className="h-6 w-6 text-primary" />
+                </div>
+                <CardTitle>Multi-Aeroports</CardTitle>
+                <CardDescription>
+                  Valable dans tous les aeroports de la zone ASECNA
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Process Section */}
+      <section id="processus" className="py-20 bg-muted/50">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold mb-4">Processus d&apos;Obtention</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Quatre etapes simples pour obtenir votre licence aeroportuaire
+            </p>
+          </div>
+          <div className="grid md:grid-cols-4 gap-8">
+            <div className="text-center">
+              <div className="h-16 w-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
+                1
+              </div>
+              <h3 className="font-semibold mb-2">Inscription</h3>
+              <p className="text-sm text-muted-foreground">
+                Creez votre compte et remplissez votre profil agent
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="h-16 w-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
+                2
+              </div>
+              <h3 className="font-semibold mb-2">Documents</h3>
+              <p className="text-sm text-muted-foreground">
+                Soumettez vos pieces justificatives requises
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="h-16 w-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
+                3
+              </div>
+              <h3 className="font-semibold mb-2">Verification</h3>
+              <p className="text-sm text-muted-foreground">
+                Le QIP verifie et valide vos documents
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="h-16 w-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
+                4
+              </div>
+              <h3 className="font-semibold mb-2">Licence</h3>
+              <p className="text-sm text-muted-foreground">
+                La DLAA emet votre licence officielle
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Airports Section */}
+      <section id="aeroports" className="py-20">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold mb-4">Aeroports Partenaires</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Principaux aeroports couverts par la plateforme AEROCHECK
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {[
+              { code: 'DSS', name: 'Dakar', country: 'Senegal' },
+              { code: 'ABJ', name: 'Abidjan', country: 'Cote d\'Ivoire' },
+              { code: 'DLA', name: 'Douala', country: 'Cameroun' },
+              { code: 'LBV', name: 'Libreville', country: 'Gabon' },
+              { code: 'NIM', name: 'Niamey', country: 'Niger' },
+              { code: 'BKO', name: 'Bamako', country: 'Mali' },
+              { code: 'COO', name: 'Cotonou', country: 'Benin' },
+              { code: 'OUA', name: 'Ouagadougou', country: 'Burkina Faso' },
+            ].map((airport) => (
+              <Card key={airport.code} className="text-center">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-mono font-bold">{airport.code}</span>
+                  </div>
+                  <div className="font-medium">{airport.name}</div>
+                  <div className="text-sm text-muted-foreground">{airport.country}</div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 bg-primary text-primary-foreground">
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="text-3xl font-bold mb-4">Pret a commencer ?</h2>
+          <p className="text-primary-foreground/80 mb-8 max-w-2xl mx-auto">
+            Rejoignez les milliers d&apos;agents qui utilisent AEROCHECK pour gerer leurs licences aeroportuaires.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link to="/register">
+              <Button size="lg" variant="secondary">
+                Creer mon compte
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+            <Link to="/login">
+              <Button size="lg" variant="outline" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10">
+                Se connecter
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t py-12">
+        <div className="container mx-auto px-4">
+          <div className="grid md:grid-cols-4 gap-8">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+                  <Plane className="h-4 w-4 text-primary-foreground" />
+                </div>
+                <span className="font-bold">AEROCHECK</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Plateforme officielle de gestion des licences aeroportuaires ASECNA.
+              </p>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4">Liens Rapides</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><a href="#fonctionnalites" className="hover:text-foreground">Fonctionnalites</a></li>
+                <li><a href="#processus" className="hover:text-foreground">Processus</a></li>
+                <li><a href="#aeroports" className="hover:text-foreground">Aeroports</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4">Support</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><a href="#" className="hover:text-foreground">Centre d&apos;aide</a></li>
+                <li><a href="#" className="hover:text-foreground">Contact</a></li>
+                <li><a href="#" className="hover:text-foreground">FAQ</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4">Legal</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><a href="#" className="hover:text-foreground">Conditions d&apos;utilisation</a></li>
+                <li><a href="#" className="hover:text-foreground">Politique de confidentialite</a></li>
+                <li><a href="#" className="hover:text-foreground">Mentions legales</a></li>
+              </ul>
+            </div>
+          </div>
+          <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground">
+            <p>&copy; 2024 AEROCHECK - ASECNA. Tous droits reserves.</p>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}

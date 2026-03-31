@@ -4,13 +4,25 @@ import { createRoot } from "react-dom/client";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
-import SiteLayout from "./components/layout/SiteLayout";
-import Admin from "./pages/Admin";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import Portal from "./pages/Portal";
-import WorkspacePage from "./pages/Workspace";
+import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
+
+// Pages
+import LoginPage from "@/pages/auth/LoginPage";
+import RegisterPage from "@/pages/auth/RegisterPage";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import AgentDashboard from "@/pages/dashboard/AgentDashboard";
+import QIPDashboard from "@/pages/dashboard/QIPDashboard";
+import DLAADashboard from "@/pages/dashboard/DLAADashboard";
+import SuperviseurDashboard from "@/pages/dashboard/SuperviseurDashboard";
+import AdminDashboard from "@/pages/dashboard/AdminDashboard";
+import AgentProfile from "@/pages/agent/AgentProfile";
+import DocumentSubmit from "@/pages/documents/DocumentSubmit";
+import DocumentVerify from "@/pages/documents/DocumentVerify";
+import LicenseIssue from "@/pages/licenses/LicenseIssue";
+import LicenseView from "@/pages/licenses/LicenseView";
+import UsersManagement from "@/pages/admin/UsersManagement";
+import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,28 +33,158 @@ const queryClient = new QueryClient({
   },
 });
 
+// Protected Route Component
+function ProtectedRoute({ children, roles }: { children: React.ReactNode; roles?: string[] }) {
+  const { isAuthenticated, isLoading, user } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (roles && user && !roles.includes(user.role)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+// Public Route (redirect if already logged in)
+function PublicRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+// Dashboard Router - redirects based on role
+function DashboardRouter() {
+  const { user } = useAuth();
+
+  if (!user) return <Navigate to="/login" replace />;
+
+  switch (user.role) {
+    case 'AGENT':
+      return <AgentDashboard />;
+    case 'QIP':
+      return <QIPDashboard />;
+    case 'DLAA':
+      return <DLAADashboard />;
+    case 'SUPERVISEUR':
+      return <SuperviseurDashboard />;
+    case 'ADMIN':
+      return <AdminDashboard />;
+    default:
+      return <AgentDashboard />;
+  }
+}
+
+const AppRoutes = () => (
+  <BrowserRouter
+    future={{
+      v7_startTransition: true,
+      v7_relativeSplatPath: true,
+    }}
+  >
+    <Routes>
+      {/* Public routes */}
+      <Route path="/login" element={
+        <PublicRoute><LoginPage /></PublicRoute>
+      } />
+      <Route path="/register" element={
+        <PublicRoute><RegisterPage /></PublicRoute>
+      } />
+
+      {/* Protected routes with dashboard layout */}
+      <Route path="/" element={
+        <ProtectedRoute>
+          <DashboardLayout />
+        </ProtectedRoute>
+      }>
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="dashboard" element={<DashboardRouter />} />
+        
+        {/* Agent routes */}
+        <Route path="profile" element={<AgentProfile />} />
+        <Route path="documents/submit" element={<DocumentSubmit />} />
+        <Route path="license" element={<LicenseView />} />
+
+        {/* QIP routes */}
+        <Route path="qip" element={
+          <ProtectedRoute roles={['QIP', 'ADMIN']}>
+            <QIPDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="qip/verify/:id" element={
+          <ProtectedRoute roles={['QIP', 'ADMIN']}>
+            <DocumentVerify />
+          </ProtectedRoute>
+        } />
+
+        {/* DLAA routes */}
+        <Route path="dlaa" element={
+          <ProtectedRoute roles={['DLAA', 'ADMIN']}>
+            <DLAADashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="dlaa/issue/:id" element={
+          <ProtectedRoute roles={['DLAA', 'ADMIN']}>
+            <LicenseIssue />
+          </ProtectedRoute>
+        } />
+
+        {/* Superviseur routes */}
+        <Route path="supervision" element={
+          <ProtectedRoute roles={['SUPERVISEUR', 'ADMIN']}>
+            <SuperviseurDashboard />
+          </ProtectedRoute>
+        } />
+
+        {/* Admin routes */}
+        <Route path="admin" element={
+          <ProtectedRoute roles={['ADMIN']}>
+            <AdminDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="admin/users" element={
+          <ProtectedRoute roles={['ADMIN']}>
+            <UsersManagement />
+          </ProtectedRoute>
+        } />
+      </Route>
+
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  </BrowserRouter>
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter
-        future={{
-          v7_startTransition: true,
-          v7_relativeSplatPath: true,
-        }}
-      >
-        <Routes>
-          <Route element={<SiteLayout />}>
-            <Route path="/" element={<Index />} />
-            <Route path="/portail" element={<Portal />} />
-            <Route path="/portail/:role" element={<WorkspacePage />} />
-            <Route path="/admin" element={<Admin />} />
-            <Route path="*" element={<NotFound />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <AppRoutes />
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

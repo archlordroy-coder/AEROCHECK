@@ -14,6 +14,7 @@ async function main() {
 
   const password = await bcrypt.hash('password123', 12);
 
+  // Admin: admin@aerocheck.com
   await prisma.user.create({
     data: {
       email: 'admin@aerocheck.com',
@@ -24,39 +25,30 @@ async function main() {
       phone: '+221771234567'
     }
   });
+  console.log('✅ SUPER_ADMIN: admin@aerocheck.com');
 
+  // QIP: qip1@aerocheck.com
   await prisma.user.create({
     data: {
-      email: 'dna.senegal@aerocheck.com',
+      email: 'qip1@aerocheck.com',
       password,
       firstName: 'Amadou',
-      lastName: 'Diallo',
-      role: 'DNA',
+      lastName: 'Verificateur',
+      role: 'QIP',
       pays: 'SENEGAL',
-      matricule: 'DNA-SN-001',
+      matricule: 'QIP-SN-001',
       phone: '+221772345678'
     }
   });
+  console.log('✅ QIP: qip1@aerocheck.com');
 
+  // DLAA: dlaa1@aerocheck.com
   await prisma.user.create({
     data: {
-      email: 'dna.ci@aerocheck.com',
-      password,
-      firstName: 'Kouamé',
-      lastName: 'Bakayoko',
-      role: 'DNA',
-      pays: 'COTE_D_IVOIRE',
-      matricule: 'DNA-CI-001',
-      phone: '+22501234567'
-    }
-  });
-
-  await prisma.user.create({
-    data: {
-      email: 'dlaa.dakar@aerocheck.com',
+      email: 'dlaa1@aerocheck.com',
       password,
       firstName: 'Moussa',
-      lastName: 'Ndiaye',
+      lastName: 'Emetteur',
       role: 'DLAA',
       pays: 'SENEGAL',
       aeroport: 'DAKAR_BLAISE_DIAGNE',
@@ -64,112 +56,66 @@ async function main() {
       phone: '+221773456789'
     }
   });
+  console.log('✅ DLAA: dlaa1@aerocheck.com');
 
-  await prisma.user.create({
+  // Agent: agent1@test.com
+  const agentUser = await prisma.user.create({
     data: {
-      email: 'dlaa.abidjan@aerocheck.com',
+      email: 'agent1@test.com',
       password,
-      firstName: 'Marie',
-      lastName: 'Kouassi',
-      role: 'DLAA',
-      pays: 'COTE_D_IVOIRE',
-      aeroport: 'ABIDJAN_FHB',
-      matricule: 'DLAA-ABJ-001',
-      phone: '+22502345678'
-    }
-  });
-
-  await prisma.user.create({
-    data: {
-      email: 'qip.senegal@aerocheck.com',
-      password,
-      firstName: 'Fatou',
-      lastName: 'Sow',
-      role: 'QIP',
-      pays: 'SENEGAL',
-      matricule: 'QIP-SN-001',
+      firstName: 'Ibrahima',
+      lastName: 'Diallo',
+      role: 'AGENT',
       phone: '+221774567890'
     }
   });
 
-  await prisma.user.create({
+  const agent = await prisma.agent.create({
     data: {
-      email: 'qip.ci@aerocheck.com',
-      password,
-      firstName: 'Jean',
-      lastName: 'Yao',
-      role: 'QIP',
-      pays: 'COTE_D_IVOIRE',
-      matricule: 'QIP-CI-001',
-      phone: '+22503456789'
-    }
-  });
-
-  const agentUser1 = await prisma.user.create({
-    data: {
-      email: 'agent1@aerocheck.com',
-      password,
-      firstName: 'Ousmane',
-      lastName: 'Fall',
-      role: 'AGENT',
-      phone: '+221775678901'
-    }
-  });
-
-  await prisma.agent.create({
-    data: {
-      userId: agentUser1.id,
+      userId: agentUser.id,
       matricule: 'AGT-DKR-001',
       dateNaissance: new Date('1990-05-15'),
       lieuNaissance: 'Dakar',
-      nationalite: 'Sénégalaise',
+      nationalite: 'Senegalaise',
       adresse: '123 Avenue Blaise Diagne, Dakar',
       fonction: 'Agent de piste',
-      employeur: 'Aéroport Dakar',
+      employeur: 'Aeroport Dakar',
       aeroport: 'DAKAR_BLAISE_DIAGNE',
       zoneAcces: JSON.stringify(['PISTE', 'TERMINAL', 'CARGO']),
       status: 'EN_ATTENTE'
     }
   });
+  console.log('✅ AGENT: agent1@test.com');
 
-  const agentUser2 = await prisma.user.create({
-    data: {
-      email: 'agent2@aerocheck.com',
-      password,
-      firstName: 'Aminata',
-      lastName: 'Koné',
-      role: 'AGENT',
-      phone: '+22504567890'
-    }
-  });
+  // Create sample documents for the agent
+  const docTypes = [
+    'PIECE_IDENTITE',
+    'PHOTO_IDENTITE', 
+    'CASIER_JUDICIAIRE',
+    'CERTIFICAT_MEDICAL',
+    'ATTESTATION_FORMATION',
+    'CONTRAT_TRAVAIL'
+  ];
 
-  await prisma.agent.create({
-    data: {
-      userId: agentUser2.id,
-      matricule: 'AGT-ABJ-001',
-      dateNaissance: new Date('1988-11-22'),
-      lieuNaissance: 'Abidjan',
-      nationalite: 'Ivoirienne',
-      adresse: '456 Boulevard FHB, Abidjan',
-      fonction: 'Agent de sécurité',
-      employeur: 'Aéroport Abidjan',
-      aeroport: 'ABIDJAN_FHB',
-      zoneAcces: JSON.stringify(['TERMINAL', 'SECURITE']),
-      status: 'EN_ATTENTE'
-    }
-  });
+  for (const docType of docTypes) {
+    await prisma.document.create({
+      data: {
+        agentId: agent.id,
+        type: docType,
+        fileName: `${docType.toLowerCase()}_AGT-DKR-001.pdf`,
+        filePath: `/uploads/documents/${agent.id}/${docType.toLowerCase()}_AGT-DKR-001.pdf`,
+        status: 'EN_ATTENTE'
+      }
+    });
+  }
+  console.log(`✅ Created ${docTypes.length} documents for agent`);
 
-  console.log('✅ Database seeded!');
-  console.log('\n📋 Test Accounts (password: password123):');
-  console.log('  AGENT: agent1@aerocheck.com (Sénégal/Dakar)');
-  console.log('  AGENT: agent2@aerocheck.com (Côte d\'Ivoire/Abidjan)');
-  console.log('  QIP: qip.senegal@aerocheck.com (Sénégal)');
-  console.log('  QIP: qip.ci@aerocheck.com (Côte d\'Ivoire)');
-  console.log('  DLAA: dlaa.dakar@aerocheck.com (Dakar)');
-  console.log('  DLAA: dlaa.abidjan@aerocheck.com (Abidjan)');
-  console.log('  DNA: dna.senegal@aerocheck.com (Sénégal)');
-  console.log('  DNA: dna.ci@aerocheck.com (Côte d\'Ivoire)');
+  console.log('\n🎉 Database seeded successfully!');
+  console.log('\n📋 Demo Accounts (password: password123):');
   console.log('  SUPER_ADMIN: admin@aerocheck.com');
+  console.log('  QIP: qip1@aerocheck.com');
+  console.log('  DLAA: dlaa1@aerocheck.com');
+  console.log('  AGENT: agent1@test.com');
 }
 
 main()

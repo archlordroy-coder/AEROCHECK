@@ -40,8 +40,10 @@ app.use('/api/archive', archiveRoutes);
 // Error handler
 app.use(errorHandler);
 
-// Start server only in local development (not on Vercel)
-if (process.env.VERCEL !== '1' && !process.env.VERCEL_ENV) {
+// Start server (local development only - Vercel uses serverless handler)
+const isVercelDeployment = process.env.VERCEL === '1' || process.env.VERCEL_ENV === 'production' || process.env.VERCEL_ENV === 'preview';
+
+if (!isVercelDeployment) {
   app.listen(PORT, () => {
     console.log(`[AEROCHECK] Backend running on http://localhost:${PORT}`);
     

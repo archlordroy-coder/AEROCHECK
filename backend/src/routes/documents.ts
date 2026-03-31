@@ -51,13 +51,13 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   // QIP: see EN_ATTENTE documents from agents in their country
   if (user.role === 'QIP') {
     where.status = 'EN_ATTENTE';
-    // Get agents from this country (based on airport)
-    const countryPrefix = user.pays === 'SENEGAL' ? 'DAKAR' : 'ABIDJAN';
+    // Get agents from this country (airport starting with DAKAR for Senegal, ABIDJAN for CI)
+    const countryAirportPrefix = user.pays === 'SENEGAL' ? 'DAKAR' : 'ABIDJAN';
     const agents = await prisma.agent.findMany({
-      where: { aeroport: { startsWith: countryPrefix } },
+      where: { aeroport: { startsWith: countryAirportPrefix } },
       select: { id: true }
     });
-    where.agentId = { in: agents.map(a => a.id) };
+    where.agentId = agents.length > 0 ? { in: agents.map(a => a.id) } : undefined;
   }
 
   // DLAA: see documents from their airport
@@ -66,7 +66,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
       where: { aeroport: user.aeroport },
       select: { id: true }
     });
-    where.agentId = { in: agents.map(a => a.id) };
+    where.agentId = agents.length > 0 ? { in: agents.map(a => a.id) } : undefined;
   }
 
   // Agents can only see their own documents

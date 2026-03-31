@@ -279,4 +279,73 @@ router.delete(
   }
 );
 
+// Get agents with document stats by country (for QIP) or airport (for DLAA)
+router.get('/with-doc-stats', authenticate, async (req: AuthRequest, res: Response) => {
+  const user = req.user!;
+  
+  let where: any = {};
+  
+  // QIP: agents from their country
+  if (user.role === 'QIP') {
+    const countryAirportPrefix = user.pays === 'SENEGAL' ? 'DAKAR' : 'ABIDJAN';
+    where.aeroport = { startsWith: countryAirportPrefix };
+  }
+  
+  // DLAA: agents from their airport
+  if (user.role === 'DLAA') {
+    where.aeroport = user.aeroport;
+  }
+  
+  // AGENT: only themselves
+  if (user.role === 'AGENT') {
+    where.userId = user.id;
+  }
+
+  const agents = await prisma.agent.findMany({
+    where,
+    include: {
+      user: {
+        select: { firstName: true, lastName: true, email: true }
+      },
+      documents: {
+        select: { id: true, status: true, type: true }
+      },
+      _count: {
+        select: { documents: true }
+      }
+    },
+    orderBy: { createdAt: 'desc' }
+  });
+
+  // Calculate stats for each agent
+  const agentsWithStats = agents.map(agent => {
+    const totalDocs = agent.documents.length;
+    const validatedDocs = agent.documents.filter(d => d.status === 'VALIDE').length;
+    const pendingDocs = agent.documents.filter(d => d.status === 'EN_ATTENTE').length;
+    const rejectedDocs = agent.documents.filter(d => d.status === 'REJETE').length;
+    
+    return {
+      id: agent.id,
+      matricule: agent.matricule,
+      firstName: agent.user.firstName,
+      lastName: agent.user.lastName,
+      email: agent.user.email,
+      aeroport: agent.aeroport,
+      status: agent.status,
+      documentStats: {
+        total: totalDocs,
+        validated: validatedDocs,
+        pending: pendingDocs,
+        rejected: rejectedDocs
+      }
+    };
+  });
+
+  res.json({
+    success: true,
+    data: agentsWithStats,
+    total: agentsWithStats.length
+  });
+});
+
 export default router;

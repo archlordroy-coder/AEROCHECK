@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { documentsApi, statsApi } from '@/lib/api';
+import { agentsApi, documentsApi, statsApi } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,7 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
+import { Progress } from '@/components/ui/progress';
 import { DocumentPreview } from '@/components/ui/document-preview';
 import { 
   FileSearch, 
@@ -20,15 +21,31 @@ import {
   XCircle,
   ArrowRight,
   Users,
-  Eye
+  Eye,
+  CheckSquare
 } from 'lucide-react';
-import { DOCUMENT_TYPE_LABELS } from '@shared/types';
+import { DOCUMENT_TYPE_LABELS, AGENT_STATUS_LABELS } from '@shared/types';
 import type { Document } from '@shared/types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 export default function QIPDashboard() {
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [agents, setAgents] = useState<Array<{
+    id: string;
+    matricule: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    aeroport: string;
+    status: string;
+    documentStats: {
+      total: number;
+      validated: number;
+      pending: number;
+      rejected: number;
+    };
+  }>>([]);
   const [stats, setStats] = useState<{
     documentsEnAttente: number;
     totalDocuments: number;
@@ -40,12 +57,16 @@ export default function QIPDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [docsRes, statsRes] = await Promise.all([
+        const [docsRes, agentsRes, statsRes] = await Promise.all([
           documentsApi.list({ status: 'EN_ATTENTE', limit: 20 }),
+          agentsApi.getWithDocStats(),
           statsApi.overview()
         ]);
         
         setDocuments(docsRes.data);
+        if (agentsRes.success && agentsRes.data) {
+          setAgents(agentsRes.data);
+        }
         if (statsRes.success && statsRes.data) {
           setStats({
             documentsEnAttente: statsRes.data.documentsEnAttente,
@@ -128,6 +149,68 @@ export default function QIPDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Agents Card with Document Stats */}
+      {agents.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckSquare className="h-5 w-5" />
+              Agents et Documents Validés
+            </CardTitle>
+            <CardDescription>
+              Liste des agents avec le nombre de documents validés
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {agents.map((agent) => {
+                const progress = agent.documentStats.total > 0 
+                  ? (agent.documentStats.validated / agent.documentStats.total) * 100 
+                  : 0;
+                return (
+                  <div key={agent.id} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-medium">
+                          {agent.firstName} {agent.lastName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {agent.matricule}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        {AGENT_STATUS_LABELS[agent.status as keyof typeof AGENT_STATUS_LABELS] || agent.status}
+                      </Badge>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Documents</span>
+                        <span className="font-medium">
+                          {agent.documentStats.validated}/{agent.documentStats.total} validés
+                        </span>
+                      </div>
+                      <Progress value={progress} className="h-2" />
+                      <div className="flex gap-2 text-xs">
+                        {agent.documentStats.pending > 0 && (
+                          <Badge className="bg-yellow-500/10 text-yellow-600">
+                            {agent.documentStats.pending} en attente
+                          </Badge>
+                        )}
+                        {agent.documentStats.rejected > 0 && (
+                          <Badge className="bg-red-500/10 text-red-600">
+                            {agent.documentStats.rejected} rejetés
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Documents table */}
       <Card>

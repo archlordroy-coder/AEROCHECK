@@ -4,6 +4,7 @@ import { agentsApi, licensesApi, statsApi } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { 
   Table, 
   TableBody, 
@@ -17,15 +18,32 @@ import {
   CheckCircle, 
   CreditCard,
   ArrowRight,
-  Users
+  Users,
+  CheckSquare,
+  FileCheck
 } from 'lucide-react';
-import { AGENT_STATUS_LABELS } from '@shared/types';
+import { AGENT_STATUS_LABELS, COUNTRY_LABELS } from '@shared/types';
 import type { Agent, License } from '@shared/types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 export default function DLAADashboard() {
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [agentsWithStats, setAgentsWithStats] = useState<Array<{
+    id: string;
+    matricule: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    aeroport: string;
+    status: string;
+    documentStats: {
+      total: number;
+      validated: number;
+      pending: number;
+      rejected: number;
+    };
+  }>>([]);
   const [licenses, setLicenses] = useState<License[]>([]);
   const [stats, setStats] = useState<{
     qipValides: number;
@@ -36,13 +54,17 @@ export default function DLAADashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [agentsRes, licensesRes, statsRes] = await Promise.all([
+        const [agentsRes, agentsStatsRes, licensesRes, statsRes] = await Promise.all([
           agentsApi.list({ status: 'QIP_VALIDE', limit: 20 }),
+          agentsApi.getWithDocStats(),
           licensesApi.list({ limit: 10 }),
           statsApi.overview()
         ]);
         
         setAgents(agentsRes.data);
+        if (agentsStatsRes.success && agentsStatsRes.data) {
+          setAgentsWithStats(agentsStatsRes.data);
+        }
         setLicenses(licensesRes.data);
         if (statsRes.success && statsRes.data) {
           setStats({
@@ -126,6 +148,68 @@ export default function DLAADashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Agents Card with Document Stats */}
+      {agentsWithStats.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileCheck className="h-5 w-5" />
+              Agents et Documents Validés
+            </CardTitle>
+            <CardDescription>
+              Liste des agents de votre aéroport avec le nombre de documents validés
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {agentsWithStats.map((agent) => {
+                const progress = agent.documentStats.total > 0 
+                  ? (agent.documentStats.validated / agent.documentStats.total) * 100 
+                  : 0;
+                return (
+                  <div key={agent.id} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-medium">
+                          {agent.firstName} {agent.lastName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {agent.matricule}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        {AGENT_STATUS_LABELS[agent.status as keyof typeof AGENT_STATUS_LABELS] || agent.status}
+                      </Badge>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Documents</span>
+                        <span className="font-medium">
+                          {agent.documentStats.validated}/{agent.documentStats.total} validés
+                        </span>
+                      </div>
+                      <Progress value={progress} className="h-2" />
+                      <div className="flex gap-2 text-xs">
+                        {agent.documentStats.pending > 0 && (
+                          <Badge className="bg-yellow-500/10 text-yellow-600">
+                            {agent.documentStats.pending} en attente
+                          </Badge>
+                        )}
+                        {agent.documentStats.rejected > 0 && (
+                          <Badge className="bg-red-500/10 text-red-600">
+                            {agent.documentStats.rejected} rejetés
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Agents ready for license */}
       <Card>

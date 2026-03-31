@@ -110,6 +110,23 @@ export const agentsApi = {
       body: JSON.stringify({ status }),
     }),
 
+  getWithDocStats: () =>
+    request<ApiResponse<Array<{
+      id: string;
+      matricule: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      aeroport: string;
+      status: string;
+      documentStats: {
+        total: number;
+        validated: number;
+        pending: number;
+        rejected: number;
+      };
+    }>>>('/api/agents/with-doc-stats'),
+
   delete: (id: string) =>
     request<ApiResponse<void>>(`/api/agents/${id}`, {
       method: 'DELETE',

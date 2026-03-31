@@ -20,14 +20,14 @@ import {
 
 const metrics = [
   {
-    value: "03",
-    label: "documents indispensables",
-    detail: "certificat médical, test d’anglais et contrôle de compétences",
-  },
-  {
     value: "02",
     label: "niveaux de validation",
     detail: "contrôle initial par QIP puis validation finale par DLAA",
+  },
+  {
+    value: "03",
+    label: "documents indispensables",
+    detail: "certificat médical, test d’anglais et contrôle de compétences",
   },
   {
     value: "05",
@@ -158,9 +158,9 @@ const accountForms = [
 
 export default function Index() {
   return (
-    <div className="container py-8 md:py-10">
-      <section className="grid gap-8 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
-        <div className="space-y-8">
+    <div className="container py-8 md:py-12">
+      <section className="grid gap-10 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)] lg:items-start xl:gap-12">
+        <div className="space-y-8 lg:pr-2">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/10 bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.28em] text-primary shadow-panel">
             <BellRing className="h-3.5 w-3.5" />
             Plateforme de gestion des licences aéroportuaires
@@ -212,7 +212,7 @@ export default function Index() {
           </div>
         </div>
 
-        <div className="rounded-[2rem] border border-primary/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(231,244,247,0.94))] p-5 shadow-glow md:p-7">
+        <div className="rounded-[2rem] border border-primary/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(231,244,247,0.94))] p-5 shadow-glow md:p-7 lg:ml-2">
           <div className="flex items-center justify-between rounded-[1.5rem] border border-border/70 bg-white px-5 py-4 shadow-panel">
             <div>
               <p className="text-sm text-muted-foreground">État du dossier</p>
@@ -294,7 +294,7 @@ export default function Index() {
         </div>
       </section>
 
-      <section className="mt-20 space-y-8">
+      <section className="mt-20 space-y-8 lg:mt-24">
         <SectionHeading
           eyebrow="Règles documentaires"
           title="Les trois pièces qui conditionnent la délivrance de la licence"
@@ -335,7 +335,7 @@ export default function Index() {
         </div>
       </section>
 
-      <section className="mt-20 grid gap-8 lg:grid-cols-[0.88fr_1.12fr] lg:items-start">
+      <section className="mt-20 grid gap-8 lg:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)] lg:items-start lg:gap-10">
         <div className="rounded-[2rem] border border-border/70 bg-white/85 p-6 shadow-panel md:p-8">
           <SectionHeading
             eyebrow="Workflow"
@@ -403,7 +403,7 @@ export default function Index() {
         </div>
       </section>
 
-      <section className="mt-20 space-y-8">
+      <section className="mt-20 space-y-8 lg:mt-24">
         <SectionHeading
           eyebrow="Acteurs du système"
           title="Des responsabilités bien séparées pour garder une gouvernance fiable"
@@ -434,7 +434,7 @@ export default function Index() {
         </div>
       </section>
 
-      <section className="mt-20 rounded-[2rem] border border-border/70 bg-white/85 p-6 shadow-panel md:p-8">
+      <section className="mt-20 rounded-[2rem] border border-border/70 bg-white/85 p-6 shadow-panel md:p-8 lg:mt-24">
         <SectionHeading
           eyebrow="Création de comptes"
           title="Une base prête pour les futurs formulaires"
@@ -465,7 +465,7 @@ export default function Index() {
         </div>
       </section>
 
-      <section className="mt-20 pb-8">
+      <section className="mt-20 pb-8 lg:mt-24">
         <div className="overflow-hidden rounded-[2rem] border border-primary/10 bg-[linear-gradient(135deg,hsl(var(--primary)),hsl(var(--accent)))] p-8 text-white shadow-glow md:p-10">
           <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
             <div>

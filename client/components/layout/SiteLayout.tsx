@@ -22,7 +22,7 @@ const navItemClassName = ({ isActive }: { isActive: boolean }) =>
 
 export default function SiteLayout() {
   return (
-    <div className="relative min-h-screen overflow-hidden">
+    <div className="relative isolate min-h-screen overflow-x-hidden">
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[560px] bg-[radial-gradient(circle_at_top_left,_hsla(189,_81%,_64%,_0.20),_transparent_34%),radial-gradient(circle_at_top_right,_hsla(213,_91%,_35%,_0.16),_transparent_32%),linear-gradient(180deg,_hsla(210,_50%,_99%,_1),_hsla(195,_33%,_96%,_1))]" />
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-full bg-[linear-gradient(hsla(211,_33%,_86%,_0.22)_1px,_transparent_1px),linear-gradient(90deg,hsla(211,_33%,_86%,_0.22)_1px,_transparent_1px)] bg-[size:72px_72px] [mask-image:linear-gradient(180deg,black,transparent_88%)]" />
 
@@ -62,11 +62,11 @@ export default function SiteLayout() {
         </div>
       </header>
 
-      <main>
+      <main className="relative z-10">
         <Outlet />
       </main>
 
-      <footer className="border-t border-border/80 bg-white/75 backdrop-blur-xl">
+      <footer className="relative z-10 border-t border-border/80 bg-white/75 backdrop-blur-xl">
         <div className="container grid gap-8 py-10 md:grid-cols-[1.3fr_0.7fr] md:items-end">
           <div className="space-y-4">
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/10 bg-primary/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-primary">

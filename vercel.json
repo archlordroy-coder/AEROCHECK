@@ -1,14 +1,14 @@
 {
   "version": 2,
   "name": "aerocheck",
-  "buildCommand": "pnpm install --no-frozen-lockfile && pnpm run build && cd backend && npx prisma generate",
+  "buildCommand": "pnpm install --no-frozen-lockfile && pnpm run build",
   "installCommand": "pnpm install --no-frozen-lockfile",
   "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/index.ts"
+      "source": "/api/:path*",
+      "destination": "/api/serverless.ts"
     },
     {
       "source": "/favicon.ico",

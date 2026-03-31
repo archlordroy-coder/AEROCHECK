@@ -40,18 +40,20 @@ app.use('/api/archive', archiveRoutes);
 // Error handler
 app.use(errorHandler);
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`[AEROCHECK] Backend running on http://localhost:${PORT}`);
-  
-  // Démarrer le planificateur de notifications
-  startNotificationScheduler();
-});
+// Start server only in local development (not on Vercel)
+if (process.env.VERCEL !== '1' && !process.env.VERCEL_ENV) {
+  app.listen(PORT, () => {
+    console.log(`[AEROCHECK] Backend running on http://localhost:${PORT}`);
+    
+    // Démarrer le planificateur de notifications
+    startNotificationScheduler();
+  });
 
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-  await prisma.$disconnect();
-  process.exit(0);
-});
+  // Graceful shutdown
+  process.on('SIGTERM', async () => {
+    await prisma.$disconnect();
+    process.exit(0);
+  });
+}
 
 export default app;

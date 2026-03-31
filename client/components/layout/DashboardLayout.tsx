@@ -39,15 +39,15 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: 'Tableau de bord', href: '/dashboard', icon: LayoutDashboard, roles: ['AGENT', 'QIP', 'DLAA', 'SUPERVISEUR', 'ADMIN'] },
+  { label: 'Tableau de bord', href: '/dashboard', icon: LayoutDashboard, roles: ['AGENT', 'QIP', 'DLAA', 'DNA', 'SUPER_ADMIN'] },
   { label: 'Mon Profil', href: '/profile', icon: User, roles: ['AGENT'] },
   { label: 'Soumettre Documents', href: '/documents/submit', icon: FileText, roles: ['AGENT'] },
   { label: 'Ma Licence', href: '/license', icon: CreditCard, roles: ['AGENT'] },
-  { label: 'Verification QIP', href: '/qip', icon: CheckCircle, roles: ['QIP', 'ADMIN'] },
-  { label: 'Emission DLAA', href: '/dlaa', icon: Award, roles: ['DLAA', 'ADMIN'] },
-  { label: 'Supervision', href: '/supervision', icon: BarChart3, roles: ['SUPERVISEUR', 'ADMIN'] },
-  { label: 'Administration', href: '/admin', icon: Settings, roles: ['ADMIN'] },
-  { label: 'Utilisateurs', href: '/admin/users', icon: Users, roles: ['ADMIN'] },
+  { label: 'Verification QIP', href: '/qip', icon: CheckCircle, roles: ['QIP', 'SUPER_ADMIN'] },
+  { label: 'Emission DLAA', href: '/dlaa', icon: Award, roles: ['DLAA', 'SUPER_ADMIN'] },
+  { label: 'Supervision', href: '/supervision', icon: BarChart3, roles: ['DNA', 'SUPER_ADMIN'] },
+  { label: 'Administration', href: '/admin', icon: Settings, roles: ['SUPER_ADMIN'] },
+  { label: 'Utilisateurs', href: '/admin/users', icon: Users, roles: ['SUPER_ADMIN'] },
 ];
 
 export default function DashboardLayout() {

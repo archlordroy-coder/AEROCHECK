@@ -111,7 +111,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next) =
 router.post(
   '/',
   authenticate,
-  authorize('DLAA', 'ADMIN'),
+  authorize('DLAA', 'SUPER_ADMIN'),
   async (req: AuthRequest, res: Response, next) => {
     try {
       const data = issueLicenseSchema.parse(req.body);
@@ -205,7 +205,7 @@ router.post(
 router.patch(
   '/:id/status',
   authenticate,
-  authorize('DLAA', 'SUPERVISEUR', 'ADMIN'),
+  authorize('DLAA', 'DNA', 'SUPER_ADMIN'),
   async (req: AuthRequest, res: Response, next) => {
     try {
       const { status } = req.body;
@@ -244,7 +244,7 @@ router.patch(
 router.post(
   '/:id/qrcode',
   authenticate,
-  authorize('DLAA', 'ADMIN'),
+  authorize('DLAA', 'SUPER_ADMIN'),
   async (req: AuthRequest, res: Response, next) => {
     try {
       const license = await prisma.license.findUnique({

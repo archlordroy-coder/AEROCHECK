@@ -21,7 +21,7 @@ import DocumentSubmit from "@/pages/documents/DocumentSubmit";
 import DocumentVerify from "@/pages/documents/DocumentVerify";
 import LicenseIssue from "@/pages/licenses/LicenseIssue";
 import LicenseView from "@/pages/licenses/LicenseView";
-import UsersManagement from "@/pages/admin/UsersManagement";
+import UserManagement from "@/pages/admin/UserManagement";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -88,9 +88,9 @@ function DashboardRouter() {
       return <QIPDashboard />;
     case 'DLAA':
       return <DLAADashboard />;
-    case 'SUPERVISEUR':
+    case 'DNA':
       return <SuperviseurDashboard />;
-    case 'ADMIN':
+    case 'SUPER_ADMIN':
       return <AdminDashboard />;
     default:
       return <AgentDashboard />;
@@ -129,44 +129,44 @@ const AppRoutes = () => (
 
         {/* QIP routes */}
         <Route path="qip" element={
-          <ProtectedRoute roles={['QIP', 'ADMIN']}>
+          <ProtectedRoute roles={['QIP', 'SUPER_ADMIN']}>
             <QIPDashboard />
           </ProtectedRoute>
         } />
         <Route path="qip/verify/:id" element={
-          <ProtectedRoute roles={['QIP', 'ADMIN']}>
+          <ProtectedRoute roles={['QIP', 'SUPER_ADMIN']}>
             <DocumentVerify />
           </ProtectedRoute>
         } />
 
         {/* DLAA routes */}
         <Route path="dlaa" element={
-          <ProtectedRoute roles={['DLAA', 'ADMIN']}>
+          <ProtectedRoute roles={['DLAA', 'SUPER_ADMIN']}>
             <DLAADashboard />
           </ProtectedRoute>
         } />
         <Route path="dlaa/issue/:id" element={
-          <ProtectedRoute roles={['DLAA', 'ADMIN']}>
+          <ProtectedRoute roles={['DLAA', 'SUPER_ADMIN']}>
             <LicenseIssue />
           </ProtectedRoute>
         } />
 
         {/* Superviseur routes */}
         <Route path="supervision" element={
-          <ProtectedRoute roles={['SUPERVISEUR', 'ADMIN']}>
+          <ProtectedRoute roles={['DNA', 'SUPER_ADMIN']}>
             <SuperviseurDashboard />
           </ProtectedRoute>
         } />
 
         {/* Admin routes */}
         <Route path="admin" element={
-          <ProtectedRoute roles={['ADMIN']}>
+          <ProtectedRoute roles={['SUPER_ADMIN']}>
             <AdminDashboard />
           </ProtectedRoute>
         } />
         <Route path="admin/users" element={
-          <ProtectedRoute roles={['ADMIN']}>
-            <UsersManagement />
+          <ProtectedRoute roles={['SUPER_ADMIN']}>
+            <UserManagement />
           </ProtectedRoute>
         } />
       </Route>
@@ -188,4 +188,4 @@ const App = () => (
   </QueryClientProvider>
 );
 
-createRoot(document.getElementById("root")!).render(<App />);
+export default App;

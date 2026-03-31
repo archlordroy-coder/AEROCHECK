@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { StatusCard, StatusBadge, StatusDot, getAgentStatusColor, getDocumentStatusColor, getLicenseStatusColor } from '@/components/ui/status-indicator';
 import { 
   FileText, 
   CreditCard, 
@@ -14,7 +15,8 @@ import {
   CheckCircle, 
   XCircle,
   AlertCircle,
-  ArrowRight
+  ArrowRight,
+  Calendar
 } from 'lucide-react';
 import { AGENT_STATUS_LABELS, DOC_STATUS_LABELS, DOCUMENT_TYPE_LABELS } from '@shared/types';
 import type { Agent, Document, License } from '@shared/types';
@@ -55,17 +57,13 @@ export default function AgentDashboard() {
   }, []);
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'LICENCE_ACTIVE':
-      case 'QIP_VALIDE':
-      case 'VALIDE':
-        return 'bg-green-500/10 text-green-600 border-green-500/20';
-      case 'EN_ATTENTE':
-      case 'DOCUMENTS_SOUMIS':
-        return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20';
-      case 'QIP_REJETE':
-      case 'REJETE':
-      case 'LICENCE_SUSPENDUE':
+    const color = getAgentStatusColor(status);
+    switch (color) {
+      case 'green':
+        return 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20';
+      case 'orange':
+        return 'bg-amber-500/10 text-amber-600 border-amber-500/20';
+      case 'red':
         return 'bg-red-500/10 text-red-600 border-red-500/20';
       default:
         return 'bg-muted text-muted-foreground';
@@ -127,75 +125,42 @@ export default function AgentDashboard() {
         </Card>
       ) : (
         <>
-          {/* Quick stats */}
+          {/* Quick stats with StatusCards */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Statut Dossier</CardTitle>
-                <User className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <Badge className={getStatusColor(agent.status)}>
-                  {AGENT_STATUS_LABELS[agent.status as keyof typeof AGENT_STATUS_LABELS] || agent.status}
-                </Badge>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Matricule: {agent.matricule}
-                </p>
-              </CardContent>
-            </Card>
+            <StatusCard
+              title="Statut Dossier"
+              value={AGENT_STATUS_LABELS[agent.status as keyof typeof AGENT_STATUS_LABELS] || agent.status}
+              color={getAgentStatusColor(agent.status)}
+              icon={User}
+            />
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Documents</CardTitle>
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{documents.length}/6</div>
-                <Progress value={progress} className="mt-2" />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {documents.filter(d => d.status === 'VALIDE').length} valides
-                </p>
-              </CardContent>
-            </Card>
+            <StatusCard
+              title="Documents"
+              value={`${documents.length}/6`}
+              color={documents.length === 6 ? 'green' : documents.length > 3 ? 'orange' : 'red'}
+              icon={FileText}
+              trend={{ value: Math.round((documents.filter(d => d.status === 'VALIDE').length / Math.max(documents.length, 1)) * 100), label: 'validés' }}
+            />
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Licence</CardTitle>
-                <CreditCard className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                {license ? (
-                  <>
-                    <Badge className={getStatusColor(license.status)}>
-                      {license.status}
-                    </Badge>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      N: {license.numero}
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Non delivree</p>
-                )}
-              </CardContent>
-            </Card>
+            <StatusCard
+              title="Licence"
+              value={license ? license.status : 'Non délivrée'}
+              color={license ? getLicenseStatusColor(license.status) : 'gray'}
+              icon={CreditCard}
+            />
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Prochaine etape</CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm font-medium">
-                  {documents.length < 6 
-                    ? 'Soumettre documents' 
-                    : agent.status === 'QIP_VALIDE'
-                    ? 'Attente DLAA'
-                    : agent.status === 'LICENCE_ACTIVE'
-                    ? 'Licence obtenue'
-                    : 'Verification en cours'}
-                </p>
-              </CardContent>
-            </Card>
+            <StatusCard
+              title="Prochaine étape"
+              value={documents.length < 6 
+                ? 'Soumettre documents' 
+                : agent.status === 'QIP_VALIDE'
+                ? 'Attente DLAA'
+                : agent.status === 'LICENCE_ACTIVE'
+                ? 'Licence obtenue'
+                : 'Vérification en cours'}
+              color={agent.status === 'LICENCE_ACTIVE' ? 'green' : 'orange'}
+              icon={Clock}
+            />
           </div>
 
           {/* Documents list */}
@@ -225,13 +190,11 @@ export default function AgentDashboard() {
                     >
                       <div className="flex items-center gap-3">
                         {doc ? (
-                          doc.status === 'VALIDE' ? (
-                            <CheckCircle className="h-5 w-5 text-green-600" />
-                          ) : doc.status === 'REJETE' ? (
-                            <XCircle className="h-5 w-5 text-red-600" />
-                          ) : (
-                            <Clock className="h-5 w-5 text-yellow-600" />
-                          )
+                          <StatusDot 
+                            color={getDocumentStatusColor(doc.status)} 
+                            pulse={doc.status === 'EN_ATTENTE'}
+                            className="h-5 w-5"
+                          />
                         ) : (
                           <FileText className="h-5 w-5 text-muted-foreground" />
                         )}
@@ -246,14 +209,12 @@ export default function AgentDashboard() {
                           )}
                         </div>
                       </div>
-                      <Badge 
-                        variant="outline"
-                        className={doc ? getStatusColor(doc.status) : ''}
-                      >
-                        {doc 
+                      <StatusBadge
+                        color={doc ? getDocumentStatusColor(doc.status) : 'gray'}
+                        label={doc 
                           ? DOC_STATUS_LABELS[doc.status as keyof typeof DOC_STATUS_LABELS] 
                           : 'Non soumis'}
-                      </Badge>
+                      />
                     </div>
                   );
                 })}

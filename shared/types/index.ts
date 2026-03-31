@@ -1,5 +1,5 @@
 // Enums
-export type Role = 'AGENT' | 'QIP' | 'DLAA' | 'SUPERVISEUR' | 'ADMIN';
+export type Role = 'AGENT' | 'QIP' | 'DLAA' | 'DNA' | 'SUPER_ADMIN';
 
 export type AgentStatus = 
   | 'EN_ATTENTE'
@@ -186,6 +186,6 @@ export const ROLE_LABELS: Record<Role, string> = {
   AGENT: "Agent",
   QIP: "Verificateur QIP",
   DLAA: "Agent DLAA",
-  SUPERVISEUR: "Superviseur",
-  ADMIN: "Administrateur"
+  DNA: "Superviseur DNA",
+  SUPER_ADMIN: "Super Administrateur"
 };

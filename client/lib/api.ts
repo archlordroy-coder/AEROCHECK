@@ -8,8 +8,12 @@ import type {
   Document,
   License,
   DashboardStats,
-  PaginatedResponse
+  PaginatedResponse,
+  Role
 } from '@shared/types';
+
+// Export UserRole as alias for Role
+export type UserRole = Role;
 
 const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 
@@ -195,3 +199,25 @@ export const statsApi = {
 export function getHealth() {
   return request<{ status: string; timestamp: string }>('/api/health');
 }
+
+// Generic api object for direct endpoint access
+export const api = {
+  get: async <T>(path: string) => {
+    const data = await request<T>(path);
+    return { data };
+  },
+  post: async <T>(path: string, body: unknown) => {
+    const data = await request<T>(path, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    return { data };
+  },
+  patch: async <T>(path: string, body: unknown) => {
+    const data = await request<T>(path, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    });
+    return { data };
+  },
+};

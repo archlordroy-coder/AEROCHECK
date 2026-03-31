@@ -90,7 +90,7 @@ router.get('/overview', authenticate, async (req: AuthRequest, res: Response) =>
 router.get(
   '/workflow',
   authenticate,
-  authorize('SUPERVISEUR', 'ADMIN'),
+  authorize('DNA', 'SUPER_ADMIN'),
   async (req: AuthRequest, res: Response) => {
     const [
       enAttente,
@@ -162,7 +162,7 @@ router.get(
 router.get(
   '/users',
   authenticate,
-  authorize('ADMIN'),
+  authorize('SUPER_ADMIN'),
   async (req: AuthRequest, res: Response) => {
     const usersByRole = await prisma.user.groupBy({
       by: ['role'],

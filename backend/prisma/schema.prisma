@@ -8,17 +8,22 @@ datasource db {
 }
 
 model User {
-  id          String       @id @default(cuid())
-  email       String       @unique
-  password    String
-  role        String       @default("AGENT")
-  firstName   String
-  lastName    String
-  phone       String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  agent       Agent?
-  validations Validation[]
+  id             String       @id @default(cuid())
+  email          String       @unique
+  password       String
+  role           String       @default("AGENT")
+  firstName      String
+  lastName       String
+  phone          String?
+  pays           String?      // Pour DNA et Admin: pays d'affectation
+  aeroport       String?      // Aéroport d'affectation
+  matricule      String?      @unique  // Pour QIP, DLAA, DNA
+  dateNomination DateTime?    // Date de nomination
+  isActive       Boolean      @default(true)  // Pour verrouiller comptes
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  agent          Agent?
+  validations    Validation[]
 }
 
 model Agent {
@@ -42,16 +47,19 @@ model Agent {
 }
 
 model Document {
-  id          String       @id @default(cuid())
-  agentId     String
-  agent       Agent        @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  type        String
-  fileName    String
-  filePath    String
-  status      String       @default("EN_ATTENTE")
-  validations Validation[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id             String       @id @default(cuid())
+  agentId        String
+  agent          Agent        @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  type           String
+  fileName       String
+  filePath       String
+  status         String       @default("EN_ATTENTE")
+  expiresAt      DateTime?    // Date d'expiration pour notifications
+  archived       Boolean      @default(false)  // Archivage
+  archivedAt     DateTime?
+  validations    Validation[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }
 
 model Validation {
@@ -60,7 +68,8 @@ model Validation {
   document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
   validatorId String
   validator   User     @relation(fields: [validatorId], references: [id])
-  status      String
+  status      String   // VALIDE, REJETE
+  niveau      String   // QIP, DLAA
   comment     String?
   createdAt   DateTime @default(now())
 }
@@ -76,4 +85,15 @@ model License {
   qrCode         String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String   // EXPIRATION_30J, EXPIRATION_15J, EXPIRATION_7J, VALIDATION, REJET
+  title       String
+  message     String
+  read        Boolean  @default(false)
+  data        String?  // JSON avec infos additionnelles
+  createdAt   DateTime @default(now())
 }

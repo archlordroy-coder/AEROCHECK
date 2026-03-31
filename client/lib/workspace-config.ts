@@ -211,7 +211,7 @@ export const roleInterfaceContent: Record<
   dna: {
     badge: "Supervision transverse",
     summary:
-      "L'espace DNA doit se comporter comme une tour de controle regionale avec comparatifs multi-pays, creation de comptes hierarchiques et escalades.",
+      "L'espace SUPER_ADMIN doit se comporter comme une tour de controle regionale avec comparatifs multi-pays, creation de comptes hierarchiques et escalades.",
     panels: [
       {
         title: "Vue multi-pays",
@@ -225,7 +225,7 @@ export const roleInterfaceContent: Record<
       },
       {
         title: "Gouvernance des comptes",
-        detail: "Creation de DLAA et DNA selon les regles du CDC.",
+        detail: "Creation de DLAA et SUPER_ADMIN selon les regles du CDC.",
         icon: Users,
         items: [
           "Creation de comptes hierarchiques",

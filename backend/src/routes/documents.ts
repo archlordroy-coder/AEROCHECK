@@ -210,38 +210,56 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next) => 
   }
 });
 
-// Validate/Reject document (QIP/DLAA only)
+// Validate/Reject document (QIP/DLAA workflow)
 router.put(
   '/:id/validate',
   authenticate,
-  authorize('QIP', 'DLAA', 'ADMIN'),
+  authorize('QIP', 'DLAA', 'SUPER_ADMIN'),
   async (req: AuthRequest, res: Response, next) => {
     try {
       const data = validateDocumentSchema.parse(req.body);
+      const validatorRole = req.user!.role;
 
       const document = await prisma.document.findUnique({
         where: { id: req.params.id },
-        include: { agent: true }
+        include: { 
+          agent: { include: { user: true } },
+          validations: true 
+        }
       });
 
       if (!document) {
         throw new AppError('Document non trouve', 404);
       }
 
-      // Create validation record
+      // Vérifier les permissions selon le niveau
+      if (validatorRole === 'QIP' && document.status !== 'EN_ATTENTE') {
+        throw new AppError('Ce document a deja ete traite', 403);
+      }
+
+      // Déterminer le niveau de validation
+      const niveau = validatorRole === 'DLAA' || validatorRole === 'SUPER_ADMIN' ? 'DLAA' : 'QIP';
+
+      // Create validation record avec niveau
       await prisma.validation.create({
         data: {
           documentId: document.id,
           validatorId: req.user!.id,
           status: data.status,
+          niveau: niveau,
           comment: data.comment
         }
       });
 
-      // Update document status
+      // Mettre à jour le statut du document
+      const newStatus = data.status; // VALIDE ou REJETE
+      
+      // Si DLAA rejette, revenir à EN_ATTENTE pour re-soumission
+      const finalStatus = (niveau === 'DLAA' && data.status === 'REJETE') ? 'REJETE' : newStatus;
+
       const updatedDocument = await prisma.document.update({
-        where: { id: req.params.id },
-        data: { status: data.status },
+        where: { id: req.params.id as string },
+        data: { status: finalStatus },
         include: {
           agent: true,
           validations: {
@@ -249,12 +267,24 @@ router.put(
               validator: {
                 select: { firstName: true, lastName: true, role: true }
               }
-            }
+            },
+            orderBy: { createdAt: 'desc' }
           }
         }
       });
 
-      // Check if all documents are validated for the agent
+      // Créer notification pour l'agent
+      await prisma.notification.create({
+        data: {
+          userId: document.agent.userId,
+          type: data.status === 'VALIDE' ? 'VALIDATION' : 'REJET',
+          title: data.status === 'VALIDE' ? 'Document valide' : 'Document rejete',
+          message: `Votre document ${document.type} a ete ${data.status === 'VALIDE' ? 'valide' : 'rejete'} par ${niveau}`,
+          data: JSON.stringify({ documentId: document.id, niveau, comment: data.comment })
+        }
+      });
+
+      // Mettre à jour le statut de l'agent selon le workflow
       const agentDocs = await prisma.document.findMany({
         where: { agentId: document.agentId }
       });
@@ -264,15 +294,23 @@ router.put(
       
       const anyRejected = agentDocs.some(d => d.status === 'REJETE');
 
+      // Workflow: EN_ATTENTE → DOCUMENTS_SOUMIS → QIP_VALIDE → DLAA_DELIVRE
       if (allValidated) {
-        await prisma.agent.update({
-          where: { id: document.agentId },
-          data: { status: 'QIP_VALIDE' }
-        });
+        if (niveau === 'DLAA') {
+          await prisma.agent.update({
+            where: { id: document.agentId },
+            data: { status: 'DLAA_DELIVRE' }
+          });
+        } else {
+          await prisma.agent.update({
+            where: { id: document.agentId },
+            data: { status: 'QIP_VALIDE' }
+          });
+        }
       } else if (anyRejected) {
         await prisma.agent.update({
           where: { id: document.agentId },
-          data: { status: 'QIP_REJETE' }
+          data: { status: niveau === 'DLAA' ? 'DLAA_REJETE' : 'QIP_REJETE' }
         });
       }
 
@@ -297,7 +335,7 @@ router.delete(
   async (req: AuthRequest, res: Response, next) => {
     try {
       const document = await prisma.document.findUnique({
-        where: { id: req.params.id },
+        where: { id: req.params.id as string },
         include: { agent: true }
       });
 
@@ -314,12 +352,12 @@ router.delete(
       }
 
       // Can only delete pending documents
-      if (document.status !== 'EN_ATTENTE' && req.user!.role !== 'ADMIN') {
+      if (document.status !== 'EN_ATTENTE' && req.user!.role !== 'SUPER_ADMIN') {
         throw new AppError('Impossible de supprimer un document valide', 400);
       }
 
       await prisma.document.delete({
-        where: { id: req.params.id }
+        where: { id: req.params.id as string }
       });
 
       res.json({ success: true, message: 'Document supprime' });

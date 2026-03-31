@@ -240,7 +240,7 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next) =
 router.patch(
   '/:id/status',
   authenticate,
-  authorize('QIP', 'DLAA', 'SUPERVISEUR', 'ADMIN'),
+  authorize('QIP', 'DLAA', 'DNA', 'SUPER_ADMIN'),
   async (req: AuthRequest, res: Response, next) => {
     try {
       const { status } = req.body;
@@ -265,7 +265,7 @@ router.patch(
 router.delete(
   '/:id',
   authenticate,
-  authorize('ADMIN'),
+  authorize('SUPER_ADMIN'),
   async (req: AuthRequest, res: Response, next) => {
     try {
       await prisma.agent.delete({

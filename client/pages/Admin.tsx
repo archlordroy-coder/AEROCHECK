@@ -7,7 +7,7 @@ import {
   LoaderCircle,
   Lock,
   MonitorCog,
-  ShieldEllipsis,
+  DNAllipsis,
   UserCog,
 } from "lucide-react";
 
@@ -40,7 +40,7 @@ export default function Admin() {
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_380px] xl:items-start">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-              <ShieldEllipsis className="h-3.5 w-3.5" />
+              <DNAllipsis className="h-3.5 w-3.5" />
               Panel super admin
             </div>
             <h1 className="mt-4 font-display text-4xl font-black tracking-tight text-foreground md:text-5xl">
@@ -146,7 +146,7 @@ export default function Admin() {
               <span>Agent</span>
               <span>QIP</span>
               <span>DLAA</span>
-              <span>DNA</span>
+              <span>SUPER_ADMINA</span>
               <span>Super admin</span>
             </div>
             {data.permissionMatrix.map((row) => (

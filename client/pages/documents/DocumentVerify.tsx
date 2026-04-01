@@ -103,7 +103,7 @@ export default function DocumentVerify() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate('/qip')}>
           <ArrowLeft className="h-5 w-5" />
@@ -132,18 +132,43 @@ export default function DocumentVerify() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Document preview placeholder */}
-              <div className="flex aspect-[4/3] items-center justify-center rounded-lg border-2 border-dashed bg-muted/50">
-                <div className="text-center">
-                  <FileText className="mx-auto h-16 w-16 text-muted-foreground" />
-                  <p className="mt-4 text-sm font-medium">{document.fileName}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Apercu du document (simulation)
-                  </p>
-                  <Button variant="outline" size="sm" className="mt-4">
-                    <Download className="mr-2 h-4 w-4" />
+              {/* Document preview */}
+              <div className="flex flex-col rounded-lg border bg-muted/20 overflow-hidden">
+                <div className="bg-muted/40 p-3 border-b flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">{document.fileName}</span>
+                  </div>
+                  <Button variant="outline" size="sm" className="h-8">
+                    <Download className="mr-2 h-3.5 w-3.5" />
                     Telecharger
                   </Button>
+                </div>
+
+                <div className="aspect-[4/3] w-full flex items-center justify-center bg-white">
+                  {document.fileName.match(/\.(jpg|jpeg|png|webp)$/i) ? (
+                    <img
+                      src={`/api/documents/preview/${document.id}`}
+                      alt="Preview"
+                      className="max-w-full max-h-full object-contain"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://placehold.co/600x400?text=Apercu+Indisponible';
+                      }}
+                    />
+                  ) : document.fileName.toLowerCase().endsWith('.pdf') ? (
+                    <iframe
+                      src={`/api/documents/preview/${document.id}`}
+                      className="w-full h-full"
+                      title="PDF Preview"
+                    />
+                  ) : (
+                    <div className="text-center p-12">
+                      <FileText className="mx-auto h-16 w-16 text-muted-foreground opacity-20" />
+                      <p className="mt-4 text-sm font-medium text-muted-foreground">
+                        Aperçu non disponible pour ce type de fichier
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>

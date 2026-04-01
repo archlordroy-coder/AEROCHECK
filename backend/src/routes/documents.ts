@@ -85,9 +85,11 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   // QIP: see EN_ATTENTE documents from agents in their country
   if (user.role === 'QIP') {
     where.status = 'EN_ATTENTE';
-    const countryAirportPrefix = user.pays === 'SENEGAL' ? 'DAKAR' : 'ABIDJAN';
+    // Get agents from the same country as QIP user
     const agents = await prisma.agent.findMany({
-      where: { aeroport: { startsWith: countryAirportPrefix } },
+      where: { 
+        pays: { code: user.pays === 'SENEGAL' ? 'SN' : 'CI' }
+      },
       select: { id: true }
     });
     if (agents.length > 0) {
@@ -98,7 +100,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   // DLAA: see documents from their airport
   if (user.role === 'DLAA') {
     const agents = await prisma.agent.findMany({
-      where: { aeroport: user.aeroport },
+      where: { aeroportId: user.aeroportId },
       select: { id: true }
     });
     if (agents.length > 0) {

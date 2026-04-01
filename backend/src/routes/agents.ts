@@ -7,13 +7,15 @@ import { AppError } from '../middleware/errorHandler.js';
 const router = Router();
 
 const createAgentSchema = z.object({
+  matricule: z.string().min(3),
   dateNaissance: z.string(),
   lieuNaissance: z.string().min(2),
-  nationalite: z.string().min(2),
+  nationaliteId: z.string(),
   adresse: z.string().min(5),
   fonction: z.string().min(2),
-  employeur: z.string().min(2),
-  aeroport: z.string().min(2),
+  employeurId: z.string(),
+  paysId: z.string(),
+  aeroportId: z.string(),
   zoneAcces: z.array(z.string()).default([])
 });
 
@@ -309,13 +311,22 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next) =
 
     const data = updateAgentSchema.parse(req.body);
 
+    // Build update data with proper type handling
+    const updateData: any = {};
+    if (data.matricule) updateData.matricule = data.matricule;
+    if (data.dateNaissance) updateData.dateNaissance = new Date(data.dateNaissance);
+    if (data.lieuNaissance) updateData.lieuNaissance = data.lieuNaissance;
+    if (data.nationaliteId) updateData.nationaliteId = data.nationaliteId;
+    if (data.adresse) updateData.adresse = data.adresse;
+    if (data.fonction) updateData.fonction = data.fonction;
+    if (data.employeurId) updateData.employeurId = data.employeurId;
+    if (data.paysId) updateData.paysId = data.paysId;
+    if (data.aeroportId) updateData.aeroportId = data.aeroportId;
+    if (data.zoneAcces) updateData.zoneAcces = JSON.stringify(data.zoneAcces);
+
     const updated = await prisma.agent.update({
       where: { id: req.params.id },
-      data: {
-        ...data,
-        dateNaissance: data.dateNaissance ? new Date(data.dateNaissance) : undefined,
-        zoneAcces: data.zoneAcces ? JSON.stringify(data.zoneAcces) : undefined
-      },
+      data: updateData,
       include: {
         user: {
           select: {

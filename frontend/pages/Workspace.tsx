@@ -1,6 +1,6 @@
 import SectionHeading from "@/components/home/SectionHeading";
 import { roleIcons, roleInterfaceContent, roleSnapshots } from "@/lib/workspace-config";
-import { getOverview } from "@/lib/api";
+import { statsApi } from "@/lib/api";
 import { UserRole } from "@shared/api";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, CheckCircle2, LoaderCircle } from "lucide-react";
@@ -12,7 +12,7 @@ export default function WorkspacePage() {
   const { role } = useParams<{ role: UserRole }>();
   const overviewQuery = useQuery({
     queryKey: ["overview"],
-    queryFn: getOverview,
+    queryFn: statsApi.overview,
   });
 
   if (!role || !validRoles.includes(role)) {

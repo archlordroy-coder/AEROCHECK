@@ -11,6 +11,7 @@ import statsRoutes from './routes/stats.js';
 import notificationRoutes from './routes/notifications.js';
 import archiveRoutes from './routes/archive.js';
 import adminRoutes from './routes/admin.js';
+import referencesRoutes from './routes/references.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { startNotificationScheduler } from './services/notifications.js';
 
@@ -49,6 +50,7 @@ app.use('/api/stats', statsRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/archive', archiveRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/references', referencesRoutes);
 
 // Error handler
 app.use(errorHandler);

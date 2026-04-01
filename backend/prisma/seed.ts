@@ -257,7 +257,8 @@ async function main() {
   }
   console.log(`✅ Seeded ${aeroportsData.length} aéroports`);
 
-  // Continue with users...
+  // Create demo users with password
+  const password = await bcrypt.hash('password123', 12);
 
   // Admin: admin@aerocheck.com
   await prisma.user.create({
@@ -273,6 +274,7 @@ async function main() {
   console.log('✅ SUPER_ADMIN: admin@aerocheck.com');
 
   // QIP: qip1@aerocheck.com
+  const senegalPays = paysCreated.find(p => p.code === 'SN');
   await prisma.user.create({
     data: {
       email: 'qip1@aerocheck.com',
@@ -280,7 +282,7 @@ async function main() {
       firstName: 'Amadou',
       lastName: 'Verificateur',
       role: 'QIP',
-      pays: 'SENEGAL',
+      paysId: senegalPays?.id,
       matricule: 'QIP-SN-001',
       phone: '+221772345678'
     }
@@ -288,6 +290,7 @@ async function main() {
   console.log('✅ QIP: qip1@aerocheck.com');
 
   // DLAA: dlaa1@aerocheck.com
+  const dkrAirport = await prisma.aeroport.findFirst({ where: { code: 'DKR' } });
   await prisma.user.create({
     data: {
       email: 'dlaa1@aerocheck.com',
@@ -295,8 +298,8 @@ async function main() {
       firstName: 'Moussa',
       lastName: 'Emetteur',
       role: 'DLAA',
-      pays: 'SENEGAL',
-      aeroport: 'DAKAR_BLAISE_DIAGNE',
+      paysId: senegalPays?.id,
+      aeroportId: dkrAirport?.id,
       matricule: 'DLAA-DKR-001',
       phone: '+221773456789'
     }
@@ -315,45 +318,53 @@ async function main() {
     }
   });
 
-  const agent = await prisma.agent.create({
-    data: {
-      userId: agentUser.id,
-      matricule: 'AGT-DKR-001',
-      dateNaissance: new Date('1990-05-15'),
-      lieuNaissance: 'Dakar',
-      nationalite: 'Senegalaise',
-      adresse: '123 Avenue Blaise Diagne, Dakar',
-      fonction: 'Agent de piste',
-      employeur: 'Aeroport Dakar',
-      aeroport: 'DAKAR_BLAISE_DIAGNE',
-      zoneAcces: JSON.stringify(['PISTE', 'TERMINAL', 'CARGO']),
-      status: 'EN_ATTENTE'
-    }
-  });
-  console.log('✅ AGENT: agent1@test.com');
+  // Get reference IDs for Senegal and related entities
+  // senegalPays and dkrAirport already declared above
+  const senegalNat = await prisma.nationalite.findFirst({ where: { code: 'SEN' } });
+  const aibdEmployer = await prisma.employeur.findFirst({ where: { nom: 'Aéroport International Blaise Diagne (AIBD)' } });
 
-  // Create sample documents for the agent
-  const docTypes = [
-    'PIECE_IDENTITE',
-    'PHOTO_IDENTITE', 
-    'CASIER_JUDICIAIRE',
-    'CERTIFICAT_MEDICAL',
-    'ATTESTATION_FORMATION',
-    'CONTRAT_TRAVAIL'
-  ];
-
-  for (const docType of docTypes) {
-    await prisma.document.create({
+  if (senegalNat && aibdEmployer && senegalPays && dkrAirport) {
+    const agent = await prisma.agent.create({
       data: {
-        agentId: agent.id,
-        type: docType,
-        fileName: `${docType.toLowerCase()}_AGT-DKR-001.pdf`,
-        filePath: `/uploads/documents/${agent.id}/${docType.toLowerCase()}_AGT-DKR-001.pdf`,
+        userId: agentUser.id,
+        matricule: 'AGT-DKR-001',
+        dateNaissance: new Date('1990-05-15'),
+        lieuNaissance: 'Dakar',
+        nationaliteId: senegalNat.id,
+        adresse: '123 Avenue Blaise Diagne, Dakar',
+        fonction: 'Agent de piste',
+        employeurId: aibdEmployer.id,
+        paysId: senegalPays.id,
+        aeroportId: dkrAirport.id,
+        zoneAcces: JSON.stringify(['PISTE', 'TERMINAL', 'CARGO']),
         status: 'EN_ATTENTE'
       }
     });
+    console.log('✅ AGENT: agent1@test.com with proper relations');
+
+    // Create sample documents for the agent
+    const docTypes = [
+      'PIECE_IDENTITE',
+      'PHOTO_IDENTITE', 
+      'CASIER_JUDICIAIRE',
+      'CERTIFICAT_MEDICAL',
+      'ATTESTATION_FORMATION',
+      'CONTRAT_TRAVAIL'
+    ];
+
+    for (const docType of docTypes) {
+      await prisma.document.create({
+        data: {
+          agentId: agent.id,
+          type: docType,
+          fileName: `${docType.toLowerCase()}_AGT-DKR-001.pdf`,
+          filePath: `/uploads/documents/${agent.id}/${docType.toLowerCase()}_AGT-DKR-001.pdf`,
+          status: 'EN_ATTENTE'
+        }
+      });
+    }
+    console.log(`✅ Created ${docTypes.length} documents for agent`);
   }
-  console.log(`✅ Created ${docTypes.length} documents for agent`);
 
   console.log('\n🎉 Database seeded successfully!');
   console.log('\n📋 Demo Accounts (password: password123):');

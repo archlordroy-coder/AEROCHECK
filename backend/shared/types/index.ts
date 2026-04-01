@@ -47,16 +47,21 @@ export interface Agent {
   matricule: string;
   dateNaissance: string;
   lieuNaissance: string;
-  nationalite: string;
+  nationaliteId: string;
   adresse: string;
   fonction: string;
-  employeur: string;
-  aeroport: string;
+  employeurId: string;
+  paysId: string;
+  aeroportId: string;
   zoneAcces: string[];
   status: AgentStatus;
   documents?: Document[];
   licenses?: License[];
   user?: User;
+  nationalite?: { id: string; code: string; nom: string };
+  employeur?: { id: string; nom: string };
+  pays?: { id: string; code: string; nom: string; nomFr: string };
+  aeroport?: { id: string; code: string; nom: string; ville: string };
   createdAt: string;
   updatedAt: string;
 }

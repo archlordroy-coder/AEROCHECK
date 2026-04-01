@@ -1,5 +1,5 @@
 import SectionHeading from "@/components/home/SectionHeading";
-import { getOverview } from "@/lib/api";
+import { statsApi } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import {
   CheckCircle2,
@@ -7,14 +7,14 @@ import {
   LoaderCircle,
   Lock,
   MonitorCog,
-  DNAllipsis,
   UserCog,
+  Ellipsis,
 } from "lucide-react";
 
 export default function Admin() {
   const overviewQuery = useQuery({
     queryKey: ["overview"],
-    queryFn: getOverview,
+    queryFn: statsApi.overview,
   });
 
   if (overviewQuery.isLoading) {
@@ -40,7 +40,7 @@ export default function Admin() {
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_380px] xl:items-start">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-              <DNAllipsis className="h-3.5 w-3.5" />
+              <Ellipsis className="h-3.5 w-3.5" />
               Panel super admin
             </div>
             <h1 className="mt-4 font-display text-4xl font-black tracking-tight text-foreground md:text-5xl">

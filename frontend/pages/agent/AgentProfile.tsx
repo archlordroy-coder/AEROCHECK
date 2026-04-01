@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { agentsApi } from '@/lib/api';
+import { agentsApi, referencesApi } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,15 +13,6 @@ import { toast } from 'sonner';
 import { User, MapPin, Briefcase, Plane, Calendar, Save, Loader2 } from 'lucide-react';
 import { AGENT_STATUS_LABELS } from '@shared/types';
 import type { Agent } from '@shared/types';
-
-const AIRPORTS = [
-  'Aeroport Blaise Diagne (DSS)',
-  'Aeroport Leopold Sedar Senghor (DKR)',
-  'Aeroport de Saint-Louis',
-  'Aeroport de Ziguinchor',
-  'Aeroport de Cap Skirring',
-  'Aeroport de Tambacounda'
-];
 
 const ZONES = [
   'Zone publique',
@@ -42,26 +33,75 @@ const FONCTIONS = [
   'Pompier aeroportuaire'
 ];
 
+interface Nationalite {
+  id: string;
+  code: string;
+  nom: string;
+}
+
+interface Employeur {
+  id: string;
+  nom: string;
+}
+
+interface Pays {
+  id: string;
+  code: string;
+  nom: string;
+  nomFr: string;
+}
+
+interface Aeroport {
+  id: string;
+  code: string;
+  nom: string;
+  ville: string;
+  paysId: string;
+}
+
 export default function AgentProfile() {
   const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
   const [agent, setAgent] = useState<Agent | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Reference data from API
+  const [nationalites, setNationalites] = useState<Nationalite[]>([]);
+  const [employeurs, setEmployeurs] = useState<Employeur[]>([]);
+  const [pays, setPays] = useState<Pays[]>([]);
+  const [aeroports, setAeroports] = useState<Aeroport[]>([]);
+  const [aeroportsFiltered, setAeroportsFiltered] = useState<Aeroport[]>([]);
+  
   const [formData, setFormData] = useState({
     dateNaissance: '',
     lieuNaissance: '',
-    nationalite: 'Senegalaise',
+    nationaliteId: '',
     adresse: '',
     fonction: '',
-    employeur: '',
-    aeroport: '',
+    employeurId: '',
+    paysId: '',
+    aeroportId: '',
     zoneAcces: [] as string[]
   });
 
   useEffect(() => {
-    const fetchAgent = async () => {
+    const fetchData = async () => {
       try {
+        // Fetch reference data
+        const [natRes, empRes, paysRes, aerRes] = await Promise.all([
+          referencesApi.nationalites(),
+          referencesApi.employeurs(),
+          referencesApi.pays(),
+          referencesApi.aeroports()
+        ]);
+        
+        setNationalites(natRes.data);
+        setEmployeurs(empRes.data);
+        setPays(paysRes.data);
+        setAeroports(aerRes.data);
+
+        // Fetch agent profile
         const response = await agentsApi.list();
         if (response.data.length > 0) {
           const agentData = response.data[0];
@@ -69,26 +109,45 @@ export default function AgentProfile() {
           setFormData({
             dateNaissance: agentData.dateNaissance.split('T')[0],
             lieuNaissance: agentData.lieuNaissance,
-            nationalite: agentData.nationalite,
+            nationaliteId: agentData.nationaliteId || '',
             adresse: agentData.adresse,
             fonction: agentData.fonction,
-            employeur: agentData.employeur,
-            aeroport: agentData.aeroport,
+            employeurId: agentData.employeurId || '',
+            paysId: agentData.paysId || '',
+            aeroportId: agentData.aeroportId || '',
             zoneAcces: JSON.parse(agentData.zoneAcces as unknown as string || '[]')
           });
+          
+          // Filter airports for the selected country
+          if (agentData.paysId) {
+            const filtered = aerRes.data.filter((a: Aeroport) => a.paysId === agentData.paysId);
+            setAeroportsFiltered(filtered);
+          }
         }
       } catch (error) {
-        console.error('Error fetching agent:', error);
+        console.error('Error fetching data:', error);
+        toast.error('Erreur lors du chargement des données');
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchAgent();
+    fetchData();
   }, []);
 
   const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const newData = { ...prev, [field]: value };
+      
+      // Cascade: when pays changes, filter airports and reset aeroport selection
+      if (field === 'paysId') {
+        const filtered = aeroports.filter(a => a.paysId === value);
+        setAeroportsFiltered(filtered);
+        newData.aeroportId = ''; // Reset airport selection
+      }
+      
+      return newData;
+    });
   };
 
   const handleZoneChange = (zone: string, checked: boolean) => {
@@ -109,7 +168,12 @@ export default function AgentProfile() {
         await agentsApi.update(agent.id, formData);
         toast.success('Profil mis a jour avec succes');
       } else {
-        await agentsApi.create(formData);
+        // Generate matricule for new agent
+        const year = new Date().getFullYear().toString().slice(-2);
+        const random = Math.floor(Math.random() * 100000).toString().padStart(5, '0');
+        const matricule = `AG${year}${random}`;
+        
+        await agentsApi.create({ ...formData, matricule });
         toast.success('Profil cree avec succes');
         await refreshUser();
         navigate('/dashboard');
@@ -170,7 +234,7 @@ export default function AgentProfile() {
                 <Plane className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm">
                   <span className="text-muted-foreground">Aeroport:</span>{' '}
-                  <span className="font-medium">{agent.aeroport}</span>
+                  <span className="font-medium">{agent.aeroport?.nom || agent.aeroportId}</span>
                 </span>
               </div>
             </div>
@@ -224,13 +288,19 @@ export default function AgentProfile() {
 
               <div className="space-y-2">
                 <Label htmlFor="nationalite">Nationalite</Label>
-                <Input
-                  id="nationalite"
-                  placeholder="Nationalite"
-                  value={formData.nationalite}
-                  onChange={(e) => handleChange('nationalite', e.target.value)}
-                  required
-                />
+                <Select 
+                  value={formData.nationaliteId}
+                  onValueChange={(value) => handleChange('nationaliteId', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selectionnez une nationalite" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {nationalites.map((n) => (
+                      <SelectItem key={n.id} value={n.id}>{n.nom}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
@@ -274,27 +344,51 @@ export default function AgentProfile() {
 
               <div className="space-y-2">
                 <Label htmlFor="employeur">Employeur</Label>
-                <Input
-                  id="employeur"
-                  placeholder="Nom de l'employeur"
-                  value={formData.employeur}
-                  onChange={(e) => handleChange('employeur', e.target.value)}
-                  required
-                />
+                <Select 
+                  value={formData.employeurId}
+                  onValueChange={(value) => handleChange('employeurId', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selectionnez un employeur" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employeurs.map((e) => (
+                      <SelectItem key={e.id} value={e.id}>{e.nom}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="pays">Pays d&apos;affectation</Label>
+                <Select 
+                  value={formData.paysId}
+                  onValueChange={(value) => handleChange('paysId', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selectionnez un pays" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pays.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.nomFr}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="aeroport">Aeroport d&apos;affectation</Label>
                 <Select 
-                  value={formData.aeroport}
-                  onValueChange={(value) => handleChange('aeroport', value)}
+                  value={formData.aeroportId}
+                  onValueChange={(value) => handleChange('aeroportId', value)}
+                  disabled={!formData.paysId || aeroportsFiltered.length === 0}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selectionnez un aeroport" />
+                    <SelectValue placeholder={formData.paysId ? "Selectionnez un aeroport" : "Selectionnez d'abord un pays"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {AIRPORTS.map(a => (
-                      <SelectItem key={a} value={a}>{a}</SelectItem>
+                    {aeroportsFiltered.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>{a.nom} ({a.ville})</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

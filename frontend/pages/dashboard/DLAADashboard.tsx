@@ -256,7 +256,7 @@ export default function DLAADashboard() {
                       {agent.matricule}
                     </TableCell>
                     <TableCell>
-                      {agent.aeroport}
+                      {agent.aeroport?.nom || agent.aeroportId}
                     </TableCell>
                     <TableCell>
                       <Badge className="bg-green-500/10 text-green-600 border-green-500/20">

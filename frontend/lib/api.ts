@@ -233,6 +233,17 @@ export const statsApi = {
   }>>('/api/stats/users'),
 };
 
+// References API
+export const referencesApi = {
+  nationalites: () => request<ApiResponse<Array<{ id: string; code: string; nom: string }>>>('/api/references/nationalites'),
+  employeurs: () => request<ApiResponse<Array<{ id: string; nom: string }>>>('/api/references/employeurs'),
+  pays: () => request<ApiResponse<Array<{ id: string; code: string; nom: string; nomFr: string }>>>('/api/references/pays'),
+  aeroports: (paysId?: string) => {
+    const params = paysId ? `?paysId=${paysId}` : '';
+    return request<ApiResponse<Array<{ id: string; code: string; nom: string; ville: string; paysId: string }>>>(`/api/references/aeroports${params}`);
+  },
+};
+
 // Health check
 export function getHealth() {
   return request<{ status: string; timestamp: string }>('/api/health');

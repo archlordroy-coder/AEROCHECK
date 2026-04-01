@@ -1,5 +1,5 @@
 import SectionHeading from "@/components/home/SectionHeading";
-import { getHealth, getOverview } from "@/lib/api";
+import { getHealth, statsApi } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -77,7 +77,7 @@ function toneClasses(tone: string) {
 export default function Index() {
   const overviewQuery = useQuery({
     queryKey: ["overview"],
-    queryFn: getOverview,
+    queryFn: statsApi.overview,
   });
   const healthQuery = useQuery({
     queryKey: ["health"],

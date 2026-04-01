@@ -1,5 +1,5 @@
 import SectionHeading from "@/components/home/SectionHeading";
-import { getOverview } from "@/lib/api";
+import { statsApi } from "@/lib/api";
 import { roleIcons, roleSnapshots } from "@/lib/workspace-config";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -15,7 +15,7 @@ import { Link } from "react-router-dom";
 export default function Portal() {
   const overviewQuery = useQuery({
     queryKey: ["overview"],
-    queryFn: getOverview,
+    queryFn: statsApi.overview,
   });
 
   if (overviewQuery.isLoading) {

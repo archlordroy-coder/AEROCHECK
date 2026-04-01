@@ -75,13 +75,13 @@ export default function SiteLayout() {
     <div className="h-screen overflow-hidden bg-[linear-gradient(180deg,rgba(245,249,250,1),rgba(233,242,245,0.95))]">
       <div className="grid h-full min-h-0 grid-cols-1 xl:grid-cols-[300px_minmax(0,1fr)]">
         <aside className="hidden h-full min-h-0 border-r border-border/70 bg-[linear-gradient(180deg,rgba(11,31,55,1),rgba(15,43,71,0.98))] text-white xl:flex xl:flex-col">
-          <div className="border-b border-white/10 px-6 py-6">
-            <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-[1.25rem] bg-white/10 backdrop-blur">
+          <div className="border-b border-white/10 px-6 py-8">
+            <div className="group flex items-center gap-4 transition-all duration-300">
+              <div className="flex h-16 w-16 items-center justify-center rounded-[1.25rem] bg-white shadow-[0_0_25px_rgba(255,255,255,0.2)] transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
                 <img
                   src={appLogo}
                   alt="Logo AEROCHECK"
-                  className="h-11 w-11 object-contain"
+                  className="h-12 w-12 object-contain drop-shadow-sm"
                 />
               </div>
               <div>
@@ -151,12 +151,12 @@ export default function SiteLayout() {
                   >
                     <Menu className="h-5 w-5" />
                   </button>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-[1rem] border border-border bg-white shadow-panel">
+                  <div className="flex items-center gap-4">
+                    <div className="group flex h-14 w-14 items-center justify-center rounded-[1rem] border border-border bg-white shadow-panel transition-all duration-300 hover:border-primary/30 hover:shadow-lg">
                       <img
                         src={appLogo}
                         alt="Logo AEROCHECK"
-                        className="h-9 w-9 object-contain"
+                        className="h-11 w-11 object-contain transition-transform duration-500 group-hover:scale-110"
                       />
                     </div>
                     <div>

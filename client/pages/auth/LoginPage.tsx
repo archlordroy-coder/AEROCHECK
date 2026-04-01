@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Plane, Lock, Mail } from 'lucide-react';
+import appLogo from "@/logo/logosansfond.png";
+import { Lock, Mail } from 'lucide-react';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -29,12 +30,12 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-background via-background to-muted/50 p-4">
-      <div className="mb-8 flex flex-col items-center gap-2">
-        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-          <Plane className="h-7 w-7" />
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-background via-background to-muted/50 p-4 animate-fade-in">
+      <div className="mb-8 flex flex-col items-center gap-4">
+        <div className="group flex h-28 w-28 items-center justify-center rounded-[2.5rem] bg-white shadow-glow ring-1 ring-border transition-all duration-500 hover:rotate-6 hover:scale-110">
+          <img src={appLogo} alt="AEROCHECK Logo" className="h-16 w-16 object-contain" />
         </div>
-        <h1 className="text-2xl font-bold tracking-tight">AEROCHECK</h1>
+        <h1 className="text-4xl font-black tracking-tighter text-foreground">AEROCHECK</h1>
         <p className="text-sm text-muted-foreground">Gestion des Licences Aeroportuaires</p>
       </div>
 

@@ -2,19 +2,53 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import path from 'path';
 import fs from 'fs';
+import multer from 'multer';
 import { prisma } from '../index.js';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
 import { AppError } from '../middleware/errorHandler.js';
 
 const router = Router();
 
-// File upload handler using multer-like approach with native express
+// File upload directory
 const DOCUMENTS_UPLOAD_DIR = path.join(process.cwd(), 'uploads', 'documents');
 
 // Ensure upload directory exists
 if (!fs.existsSync(DOCUMENTS_UPLOAD_DIR)) {
   fs.mkdirSync(DOCUMENTS_UPLOAD_DIR, { recursive: true });
 }
+
+// Multer storage configuration
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const agentId = req.body.agentId || 'temp';
+    const agentDir = path.join(DOCUMENTS_UPLOAD_DIR, agentId);
+    if (!fs.existsSync(agentDir)) {
+      fs.mkdirSync(agentDir, { recursive: true });
+    }
+    cb(null, agentDir);
+  },
+  filename: (req, file, cb) => {
+    const docType = req.body.type || 'DOCUMENT';
+    const timestamp = Date.now();
+    const ext = path.extname(file.originalname) || '.pdf';
+    cb(null, `${docType.toLowerCase()}_${timestamp}${ext}`);
+  }
+});
+
+// Multer upload middleware
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['.pdf', '.jpg', '.jpeg', '.png', '.gif'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowedTypes.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Type de fichier non autorisé. Utilisez PDF, JPG, PNG ou GIF'));
+    }
+  }
+});
 
 const createDocumentSchema = z.object({
   agentId: z.string(),
@@ -156,8 +190,8 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next) =
   }
 });
 
-// Submit document with file upload
-router.post('/', authenticate, async (req: AuthRequest, res: Response, next) => {
+// Submit document with file upload using multer
+router.post('/', authenticate, upload.single('file'), async (req: AuthRequest, res: Response, next) => {
   try {
     const data = createDocumentSchema.parse(req.body);
 
@@ -174,7 +208,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next) => 
       throw new AppError('Acces refuse', 403);
     }
 
-    // Check if document type already submitted
+    // Check if document type already submitted (allow re-submission of REJETE documents)
     const existing = await prisma.document.findFirst({
       where: {
         agentId: data.agentId,
@@ -184,19 +218,54 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next) => 
     });
 
     if (existing) {
+      // Delete uploaded file if document already exists
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
       throw new AppError('Ce type de document a deja ete soumis', 400);
     }
 
-    // Get file info from request (filename passed in body for now, actual file handling would need multer)
-    const fileName = req.body.fileName || `${data.type}_${Date.now()}.pdf`;
-    const agentDir = path.join(DOCUMENTS_UPLOAD_DIR, data.agentId);
-    
-    if (!fs.existsSync(agentDir)) {
-      fs.mkdirSync(agentDir, { recursive: true });
+    // Check for rejected document - if exists, archive it before creating new
+    const rejectedDoc = await prisma.document.findFirst({
+      where: {
+        agentId: data.agentId,
+        type: data.type,
+        status: 'REJETE'
+      }
+    });
+
+    if (rejectedDoc) {
+      // Archive the rejected document
+      await prisma.document.update({
+        where: { id: rejectedDoc.id },
+        data: { 
+          archived: true,
+          archivedAt: new Date()
+        }
+      });
+      
+      // Reset agent status if needed
+      if (agent.status === 'QIP_REJETE' || agent.status === 'DLAA_REJETE') {
+        await prisma.agent.update({
+          where: { id: data.agentId },
+          data: { status: 'DOCUMENTS_SOUMIS' }
+        });
+      }
     }
-    
-    const filePath = path.join(agentDir, fileName);
-    const relativePath = `/uploads/documents/${data.agentId}/${fileName}`;
+
+    // Get file info from multer
+    let fileName: string;
+    let relativePath: string;
+
+    if (req.file) {
+      // Use uploaded file info
+      fileName = req.file.filename;
+      relativePath = `/uploads/documents/${data.agentId}/${fileName}`;
+    } else {
+      // No file uploaded - use placeholder
+      fileName = `${data.type}_${Date.now()}.pdf`;
+      relativePath = `/uploads/documents/${data.agentId}/${fileName}`;
+    }
 
     // Create document with actual file path
     const document = await prisma.document.create({
@@ -232,6 +301,10 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next) => 
 
     res.status(201).json({ success: true, data: document });
   } catch (error) {
+    // Clean up uploaded file on error
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
     if (error instanceof z.ZodError) {
       res.status(400).json({ 
         success: false, 
@@ -284,15 +357,32 @@ router.put(
         }
       });
 
-      // Mettre à jour le statut du document
+      // Mettre à jour le statut du document avec date d'expiration si validé
       const newStatus = data.status; // VALIDE ou REJETE
       
-      // Si DLAA rejette, revenir à EN_ATTENTE pour re-soumission
+      // Calculer la date d'expiration si le document est validé
+      let expiresAt = null;
+      if (data.status === 'VALIDE') {
+        const docTypeConfig = await prisma.documentTypeConfig.findUnique({
+          where: { type: document.type }
+        });
+        
+        if (docTypeConfig) {
+          const validityDays = docTypeConfig.validityDuration;
+          expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + validityDays);
+        }
+      }
+      
+      // Si DLAA rejette, revenir à REJETE pour re-soumission
       const finalStatus = (niveau === 'DLAA' && data.status === 'REJETE') ? 'REJETE' : newStatus;
 
       const updatedDocument = await prisma.document.update({
         where: { id: req.params.id as string },
-        data: { status: finalStatus },
+        data: { 
+          status: finalStatus,
+          expiresAt: expiresAt
+        },
         include: {
           agent: true,
           validations: {
@@ -318,33 +408,73 @@ router.put(
       });
 
       // Mettre à jour le statut de l'agent selon le workflow
+      // Règle: Tous les documents doivent être validés par QIP avant passage à DLAA
       const agentDocs = await prisma.document.findMany({
         where: { agentId: document.agentId }
       });
 
-      const allValidated = agentDocs.length >= 6 && 
-        agentDocs.every(d => d.status === 'VALIDE');
-      
+      const allValidated = agentDocs.length > 0 && agentDocs.every(d => d.status === 'VALIDE');
       const anyRejected = agentDocs.some(d => d.status === 'REJETE');
+      const allQIPOrDLAAValidated = agentDocs.every(d => 
+        d.status === 'VALIDE' || d.status === 'REJETE'
+      );
 
-      // Workflow: EN_ATTENTE → DOCUMENTS_SOUMIS → QIP_VALIDE → DLAA_DELIVRE
-      if (allValidated) {
-        if (niveau === 'DLAA') {
-          await prisma.agent.update({
-            where: { id: document.agentId },
-            data: { status: 'DLAA_DELIVRE' }
-          });
-        } else {
+      // Workflow: EN_ATTENTE → DOCUMENTS_QIP_VALIDES → DLAA_DELIVRE
+      // Pour que l'agent passe à DLAA, QIP doit valider TOUS les documents
+      if (niveau === 'QIP') {
+        if (allValidated) {
+          // Tous les documents validés par QIP → passage à l'étape DLAA
           await prisma.agent.update({
             where: { id: document.agentId },
             data: { status: 'QIP_VALIDE' }
           });
+          
+          // Notification pour l'agent
+          await prisma.notification.create({
+            data: {
+              userId: document.agent.userId,
+              type: 'VALIDATION',
+              title: 'Documents validés par QIP',
+              message: 'Tous vos documents ont été validés par le QIP. Votre dossier passe à l\'étape DLAA.',
+              data: JSON.stringify({ agentId: document.agentId, niveau: 'QIP' })
+            }
+          });
+        } else if (anyRejected) {
+          // Au moins un document rejeté
+          await prisma.agent.update({
+            where: { id: document.agentId },
+            data: { status: 'QIP_REJETE' }
+          });
         }
-      } else if (anyRejected) {
-        await prisma.agent.update({
-          where: { id: document.agentId },
-          data: { status: niveau === 'DLAA' ? 'DLAA_REJETE' : 'QIP_REJETE' }
+        // Si pas tous validés et pas de rejet, l'agent reste en cours de validation QIP
+      } else if (niveau === 'DLAA') {
+        // DLAA ne peut valider que si QIP a déjà tout validé
+        const agent = await prisma.agent.findUnique({
+          where: { id: document.agentId }
         });
+        
+        if (agent?.status === 'QIP_VALIDE' && allValidated) {
+          await prisma.agent.update({
+            where: { id: document.agentId },
+            data: { status: 'DLAA_DELIVRE' }
+          });
+          
+          // Notification de validation finale
+          await prisma.notification.create({
+            data: {
+              userId: document.agent.userId,
+              type: 'VALIDATION',
+              title: 'Licence DLAA délivrée',
+              message: 'Votre licence d\'accès aéroportuaire a été délivrée.',
+              data: JSON.stringify({ agentId: document.agentId, niveau: 'DLAA' })
+            }
+          });
+        } else if (data.status === 'REJETE') {
+          await prisma.agent.update({
+            where: { id: document.agentId },
+            data: { status: 'DLAA_REJETE' }
+          });
+        }
       }
 
       res.json({ success: true, data: updatedDocument });
@@ -456,6 +586,39 @@ router.get('/:id/preview', authenticate, async (req: AuthRequest, res: Response,
     
     const stream = fs.createReadStream(filePath);
     stream.pipe(res);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Check for expired documents (admin only)
+router.get('/expired/list', authenticate, authorize('SUPER_ADMIN', 'QIP', 'DLAA'), async (req: AuthRequest, res: Response, next) => {
+  try {
+    const now = new Date();
+    
+    const expiredDocs = await prisma.document.findMany({
+      where: {
+        status: 'VALIDE',
+        expiresAt: { lt: now }
+      },
+      include: {
+        agent: {
+          include: {
+            user: {
+              select: { firstName: true, lastName: true, email: true }
+            }
+          }
+        }
+      },
+      orderBy: { expiresAt: 'asc' }
+    });
+
+    res.json({
+      success: true,
+      data: expiredDocs,
+      total: expiredDocs.length,
+      checkedAt: now.toISOString()
+    });
   } catch (error) {
     next(error);
   }

@@ -10,6 +10,7 @@ import licenseRoutes from './routes/licenses.js';
 import statsRoutes from './routes/stats.js';
 import notificationRoutes from './routes/notifications.js';
 import archiveRoutes from './routes/archive.js';
+import adminRoutes from './routes/admin.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { startNotificationScheduler } from './services/notifications.js';
 
@@ -47,6 +48,7 @@ app.use('/api/licenses', licenseRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/archive', archiveRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Error handler
 app.use(errorHandler);

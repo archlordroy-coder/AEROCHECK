@@ -97,3 +97,12 @@ model Notification {
   data        String?  // JSON avec infos additionnelles
   createdAt   DateTime @default(now())
 }
+
+model DocumentTypeConfig {
+  id                String   @id @default(cuid())
+  type              String   @unique  // CARTE_IDENTITE, PERMIS_CONDUITE, etc.
+  validityDuration  Int      // Durée de validité en jours
+  isRequired        Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}

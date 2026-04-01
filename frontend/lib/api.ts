@@ -53,10 +53,31 @@ async function request<T>(
     headers,
   });
 
-  const data = await response.json();
+  const rawText = await response.text();
+  const contentType = response.headers.get('content-type') || '';
+
+  let data: any = null;
+  if (rawText) {
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      const snippet = rawText.slice(0, 300);
+      throw new Error(
+        `Invalid JSON response (${response.status}) for ${path}. content-type=${contentType}. body=${snippet}`
+      );
+    }
+  }
 
   if (!response.ok) {
-    throw new Error(data.error || `Request failed: ${response.status}`);
+    const message =
+      (data && typeof data === 'object' && 'error' in data && typeof data.error === 'string')
+        ? data.error
+        : `Request failed: ${response.status}`;
+    throw new Error(message);
+  }
+
+  if (data === null) {
+    throw new Error(`Empty response body (${response.status}) for ${path}`);
   }
 
   return data as T;

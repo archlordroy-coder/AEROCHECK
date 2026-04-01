@@ -2,13 +2,12 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import appLogo from "@/logo/logosansfond.png";
 import { 
-  Plane, 
   Shield, 
   FileCheck, 
   Award, 
   Users, 
-  CheckCircle, 
   ArrowRight,
   Building2,
   Globe,
@@ -21,12 +20,12 @@ export default function LandingPage() {
       {/* Header */}
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-              <Plane className="h-6 w-6 text-primary-foreground" />
+          <Link to="/" className="flex items-center gap-3 transition-transform hover:scale-105">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-border">
+              <img src={appLogo} alt="AEROCHECK Logo" className="h-7 w-7 object-contain" />
             </div>
-            <span className="text-xl font-bold">AEROCHECK</span>
-          </div>
+            <span className="text-xl font-black tracking-tight text-foreground">AEROCHECK</span>
+          </Link>
           <nav className="hidden md:flex items-center gap-6">
             <a href="#fonctionnalites" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Fonctionnalites
@@ -53,14 +52,14 @@ export default function LandingPage() {
       <section className="relative overflow-hidden py-20 md:py-32">
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent" />
         <div className="container mx-auto px-4 relative">
-          <div className="max-w-3xl mx-auto text-center">
-            <Badge className="mb-4" variant="secondary">
+          <div className="max-w-3xl mx-auto text-center animate-fade-in-up">
+            <Badge className="mb-6 animate-float" variant="secondary">
               Plateforme Officielle ASECNA
             </Badge>
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 text-balance">
+            <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-6 text-balance text-slate-950">
               Gestion des Licences Aeroportuaires
             </h1>
-            <p className="text-xl text-muted-foreground mb-8 text-pretty">
+            <p className="text-xl text-muted-foreground mb-10 text-pretty leading-relaxed">
               La plateforme digitale de gestion des licences pour les agents aeroportuaires 
               de la zone ASECNA. Simplifiez vos demarches administratives.
             </p>
@@ -115,7 +114,7 @@ export default function LandingPage() {
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card>
+            <Card className="transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-border/50">
               <CardHeader>
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                   <Users className="h-6 w-6 text-primary" />
@@ -126,7 +125,7 @@ export default function LandingPage() {
                 </CardDescription>
               </CardHeader>
             </Card>
-            <Card>
+            <Card className="transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-border/50">
               <CardHeader>
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                   <FileCheck className="h-6 w-6 text-primary" />
@@ -137,7 +136,7 @@ export default function LandingPage() {
                 </CardDescription>
               </CardHeader>
             </Card>
-            <Card>
+            <Card className="transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-border/50">
               <CardHeader>
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                   <Award className="h-6 w-6 text-primary" />
@@ -148,7 +147,7 @@ export default function LandingPage() {
                 </CardDescription>
               </CardHeader>
             </Card>
-            <Card>
+            <Card className="transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-border/50">
               <CardHeader>
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                   <Shield className="h-6 w-6 text-primary" />
@@ -159,7 +158,7 @@ export default function LandingPage() {
                 </CardDescription>
               </CardHeader>
             </Card>
-            <Card>
+            <Card className="transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-border/50">
               <CardHeader>
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                   <Clock className="h-6 w-6 text-primary" />
@@ -170,7 +169,7 @@ export default function LandingPage() {
                 </CardDescription>
               </CardHeader>
             </Card>
-            <Card>
+            <Card className="transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-border/50">
               <CardHeader>
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                   <Globe className="h-6 w-6 text-primary" />
@@ -255,10 +254,10 @@ export default function LandingPage() {
               { code: 'COO', name: 'Cotonou', country: 'Benin' },
               { code: 'OUA', name: 'Ouagadougou', country: 'Burkina Faso' },
             ].map((airport) => (
-              <Card key={airport.code} className="text-center">
+              <Card key={airport.code} className="text-center transition-all duration-300 hover:border-primary/50 hover:bg-primary/[0.02]">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-center gap-2 mb-2">
-                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                    <Building2 className="h-4 w-4 text-primary/70" />
                     <span className="font-mono font-bold">{airport.code}</span>
                   </div>
                   <div className="font-medium">{airport.name}</div>
@@ -298,11 +297,11 @@ export default function LandingPage() {
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8">
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                  <Plane className="h-4 w-4 text-primary-foreground" />
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-border">
+                  <img src={appLogo} alt="AEROCHECK Logo" className="h-7 w-7 object-contain" />
                 </div>
-                <span className="font-bold">AEROCHECK</span>
+                <span className="text-lg font-bold tracking-tight">AEROCHECK</span>
               </div>
               <p className="text-sm text-muted-foreground">
                 Plateforme officielle de gestion des licences aeroportuaires ASECNA.

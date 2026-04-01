@@ -206,52 +206,84 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next) =
   }
 });
 
-// Create agent profile
-router.post('/', authenticate, async (req: AuthRequest, res: Response, next) => {
+// Create agent
+router.post('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = createAgentSchema.parse(req.body);
+    const userId = req.user!.id;
 
     // Check if user already has an agent profile
-    const existing = await prisma.agent.findUnique({
-      where: { userId: req.user!.id }
+    const existingAgent = await prisma.agent.findUnique({
+      where: { userId }
     });
 
-    if (existing) {
-      throw new AppError('Vous avez deja un profil agent', 400);
+    if (existingAgent) {
+      throw new AppError('Profil agent deja existant', 400);
+    }
+
+    // Check if matricule is unique
+    const existingMatricule = await prisma.agent.findUnique({
+      where: { matricule: data.matricule }
+    });
+
+    if (existingMatricule) {
+      throw new AppError('Ce matricule est deja utilise', 400);
+    }
+
+    // Verify that referenced entities exist
+    const [nationalite, employeur, pays, aeroport] = await Promise.all([
+      prisma.nationalite.findUnique({ where: { id: data.nationaliteId } }),
+      prisma.employeur.findUnique({ where: { id: data.employeurId } }),
+      prisma.pays.findUnique({ where: { id: data.paysId } }),
+      prisma.aeroport.findUnique({ where: { id: data.aeroportId } })
+    ]);
+
+    if (!nationalite) throw new AppError('Nationalite invalide', 400);
+    if (!employeur) throw new AppError('Employeur invalide', 400);
+    if (!pays) throw new AppError('Pays invalide', 400);
+    if (!aeroport) throw new AppError('Aeroport invalide', 400);
+
+    // Verify that airport belongs to selected country
+    if (aeroport.paysId !== pays.id) {
+      throw new AppError('L\'aeroport selectionne n\'appartient pas au pays choisi', 400);
     }
 
     const agent = await prisma.agent.create({
       data: {
-        userId: req.user!.id,
-        matricule: generateMatricule(),
+        userId,
+        matricule: data.matricule,
         dateNaissance: new Date(data.dateNaissance),
         lieuNaissance: data.lieuNaissance,
-        nationalite: data.nationalite,
+        nationaliteId: data.nationaliteId,
         adresse: data.adresse,
         fonction: data.fonction,
-        employeur: data.employeur,
-        aeroport: data.aeroport,
-        zoneAcces: JSON.stringify(data.zoneAcces),
+        employeurId: data.employeurId,
+        paysId: data.paysId,
+        aeroportId: data.aeroportId,
+        zoneAcces: JSON.stringify(data.zoneAcces || []),
         status: 'EN_ATTENTE'
       },
       include: {
         user: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true
-          }
-        }
+          select: { firstName: true, lastName: true, email: true }
+        },
+        nationalite: true,
+        employeur: true,
+        pays: true,
+        aeroport: { include: { pays: true } }
       }
     });
 
-    res.status(201).json({ success: true, data: agent });
+    res.status(201).json({
+      success: true,
+      data: agent,
+      message: 'Profil agent cree avec succes'
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ 
-        success: false, 
-        error: error.errors[0].message 
+      res.status(400).json({
+        success: false,
+        error: error.errors[0].message
       });
       return;
     }

@@ -27,23 +27,28 @@ model User {
 }
 
 model Agent {
-  id            String     @id @default(cuid())
-  userId        String     @unique
-  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  matricule     String     @unique
-  dateNaissance DateTime
-  lieuNaissance String
-  nationalite   String
-  adresse       String
-  fonction      String
-  employeur     String
-  aeroport      String
-  zoneAcces     String     @default("[]")
-  status        String     @default("EN_ATTENTE")
-  documents     Document[]
-  licenses      License[]
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  id               String      @id @default(cuid())
+  userId           String      @unique
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  matricule        String      @unique
+  dateNaissance    DateTime
+  lieuNaissance    String
+  nationaliteId    String
+  nationalite      Nationalite @relation(fields: [nationaliteId], references: [id])
+  adresse          String
+  fonction         String
+  employeurId      String
+  employeur        Employeur   @relation(fields: [employeurId], references: [id])
+  paysId           String
+  pays             Pays        @relation(fields: [paysId], references: [id])
+  aeroportId       String
+  aeroport         Aeroport    @relation(fields: [aeroportId], references: [id])
+  zoneAcces        String      @default("[]")
+  status           String      @default("EN_ATTENTE")
+  documents        Document[]
+  licenses         License[]
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 }
 
 model Document {
@@ -106,3 +111,49 @@ model DocumentTypeConfig {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 }
+
+// Table des nationalités
+model Nationalite {
+  id        String   @id @default(cuid())
+  code      String   @unique  // ISO 3166-1 alpha-3 (SEN, CIV, etc.)
+  nom       String   @unique
+  agents    Agent[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Table des employeurs
+model Employeur {
+  id        String   @id @default(cuid())
+  nom       String   @unique
+  agents    Agent[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Table des pays africains
+model Pays {
+  id        String     @id @default(cuid())
+  code      String     @unique  // ISO 3166-1 alpha-2
+  nom       String     @unique
+  nomFr     String     // Nom en français
+  aeroports Aeroport[]
+  agents    Agent[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+// Table des aéroports africains
+model Aeroport {
+  id          String   @id @default(cuid())
+  code        String   @unique  // Code IATA (DKR, ABJ, etc.)
+  nom         String
+  ville       String
+  paysId      String
+  pays        Pays     @relation(fields: [paysId], references: [id])
+  agents      Agent[]
+  users       User[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+

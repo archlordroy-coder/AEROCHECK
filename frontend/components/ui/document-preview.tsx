@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Eye, FileText, X, Download } from 'lucide-react';
+import { Eye, FileText, X, Download, GripVertical } from 'lucide-react';
 import { DOCUMENT_TYPE_LABELS, COUNTRY_LABELS } from '@shared/types';
 import type { Document } from '@shared/types';
 
@@ -22,6 +22,50 @@ export function DocumentPreview({
   showActions = false 
 }: DocumentPreviewProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [previewSize, setPreviewSize] = useState({ width: 800, height: 500 });
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeRef = useRef<{ startX: number; startY: number; startWidth: number; startHeight: number } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    resizeRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startWidth: previewSize.width,
+      startHeight: previewSize.height
+    };
+  }, [previewSize]);
+
+  const handleResizeMove = useCallback((e: MouseEvent) => {
+    if (!isResizing || !resizeRef.current) return;
+    
+    const deltaX = e.clientX - resizeRef.current.startX;
+    const deltaY = e.clientY - resizeRef.current.startY;
+    
+    setPreviewSize({
+      width: Math.max(400, resizeRef.current.startWidth + deltaX),
+      height: Math.max(300, resizeRef.current.startHeight + deltaY)
+    });
+  }, [isResizing]);
+
+  const handleResizeEnd = useCallback(() => {
+    setIsResizing(false);
+    resizeRef.current = null;
+  }, []);
+
+  // Add global mouse events for resizing
+  useState(() => {
+    if (isResizing) {
+      window.addEventListener('mousemove', handleResizeMove);
+      window.addEventListener('mouseup', handleResizeEnd);
+      return () => {
+        window.removeEventListener('mousemove', handleResizeMove);
+        window.removeEventListener('mouseup', handleResizeEnd);
+      };
+    }
+  });
 
   if (!document) return null;
 
@@ -61,36 +105,62 @@ export function DocumentPreview({
             </Badge>
           </div>
 
-          {/* Preview Area */}
-          <div className="border rounded-lg overflow-hidden bg-gray-50 min-h-[400px] flex items-center justify-center">
-            {isImage ? (
-              <img 
-                src={previewUrl} 
-                alt={document.fileName}
-                className="max-w-full max-h-[500px] object-contain"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
-            ) : isPDF ? (
-              <iframe 
-                src={previewUrl} 
-                className="w-full h-[500px]"
-                title={document.fileName}
-              />
-            ) : (
-              <div className="text-center p-8">
-                <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500 mb-2">Prévisualisation non disponible</p>
-                <p className="text-sm text-gray-400">{document.fileName}</p>
-                <Button asChild variant="outline" className="mt-4">
-                  <a href={previewUrl} download>
-                    <Download className="h-4 w-4 mr-2" />
-                    Télécharger
-                  </a>
-                </Button>
-              </div>
-            )}
+          {/* Resizable Preview Area */}
+          <div 
+            ref={containerRef}
+            className="border rounded-lg overflow-hidden bg-gray-50 relative"
+            style={{ 
+              width: previewSize.width, 
+              height: previewSize.height,
+              minWidth: 400,
+              minHeight: 300,
+              maxWidth: '100%'
+            }}
+          >
+            <div className="w-full h-full flex items-center justify-center overflow-auto">
+              {isImage ? (
+                <img 
+                  src={previewUrl} 
+                  alt={document.fileName}
+                  className="max-w-full max-h-full object-contain"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              ) : isPDF ? (
+                <iframe 
+                  src={previewUrl} 
+                  className="w-full h-full"
+                  title={document.fileName}
+                />
+              ) : (
+                <div className="text-center p-8">
+                  <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500 mb-2">Prévisualisation non disponible</p>
+                  <p className="text-sm text-gray-400">{document.fileName}</p>
+                  <Button asChild variant="outline" className="mt-4">
+                    <a href={previewUrl} download>
+                      <Download className="h-4 w-4 mr-2" />
+                      Télécharger
+                    </a>
+                  </Button>
+                </div>
+              )}
+            </div>
+            
+            {/* Resize Handle */}
+            <div
+              className={`absolute bottom-0 right-0 w-6 h-6 cursor-se-resize flex items-center justify-center bg-primary/10 hover:bg-primary/20 transition-colors rounded-tl-lg ${isResizing ? 'bg-primary/30' : ''}`}
+              onMouseDown={handleResizeStart}
+              title="Glissez pour redimensionner"
+            >
+              <GripVertical className="h-4 w-4 text-primary rotate-45" />
+            </div>
+            
+            {/* Size indicator */}
+            <div className="absolute bottom-1 left-2 text-xs text-muted-foreground bg-white/80 px-2 py-0.5 rounded">
+              {previewSize.width} × {previewSize.height}
+            </div>
           </div>
 
           {/* Actions */}

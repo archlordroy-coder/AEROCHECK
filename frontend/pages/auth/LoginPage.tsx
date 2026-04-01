@@ -34,8 +34,8 @@ export default function LoginPage() {
       {/* Left side - Logo & Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary/20 via-background to-muted items-center justify-center p-8">
         <div className="flex flex-col items-center gap-6">
-          <div className="group flex h-40 w-40 items-center justify-center rounded-[3rem] bg-white shadow-2xl ring-4 ring-border/50 transition-all duration-500 hover:rotate-6 hover:scale-110">
-            <img src={appLogo} alt="AEROCHECK Logo" className="h-28 w-28 object-contain" />
+          <div className="group flex h-72 w-72 items-center justify-center rounded-[4rem] bg-white shadow-2xl ring-4 ring-border/50 transition-all duration-500 hover:rotate-6 hover:scale-110">
+            <img src={appLogo} alt="AEROCHECK Logo" className="h-56 w-56 object-contain" />
           </div>
           <h1 className="text-5xl font-black tracking-tighter text-foreground drop-shadow-lg">AEROCHECK</h1>
           <p className="text-xl text-muted-foreground font-medium">Gestion des Licences Aeroportuaires</p>

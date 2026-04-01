@@ -148,7 +148,7 @@ export default function DocumentVerify() {
                 <div className="aspect-[4/3] w-full flex items-center justify-center bg-white">
                   {document.fileName.match(/\.(jpg|jpeg|png|webp)$/i) ? (
                     <img
-                      src={`/api/documents/preview/${document.id}`}
+                      src={`/api/documents/${document.id}/preview`}
                       alt="Preview"
                       className="max-w-full max-h-full object-contain"
                       onError={(e) => {
@@ -157,7 +157,7 @@ export default function DocumentVerify() {
                     />
                   ) : document.fileName.toLowerCase().endsWith('.pdf') ? (
                     <iframe
-                      src={`/api/documents/preview/${document.id}`}
+                      src={`/api/documents/${document.id}/preview`}
                       className="w-full h-full"
                       title="PDF Preview"
                     />

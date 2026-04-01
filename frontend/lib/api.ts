@@ -241,20 +241,38 @@ export function getHealth() {
 // Generic api object for direct endpoint access
 export const api = {
   get: async <T>(path: string) => {
-    const data = await request<T>(path);
+    const normalizedPath = path.startsWith('/api/') ? path : `/api${path.startsWith('/') ? path : '/' + path}`;
+    const data = await request<T>(normalizedPath);
     return { data };
   },
   post: async <T>(path: string, body: unknown) => {
-    const data = await request<T>(path, {
+    const normalizedPath = path.startsWith('/api/') ? path : `/api${path.startsWith('/') ? path : '/' + path}`;
+    const data = await request<T>(normalizedPath, {
       method: 'POST',
       body: JSON.stringify(body),
     });
     return { data };
   },
   patch: async <T>(path: string, body: unknown) => {
-    const data = await request<T>(path, {
+    const normalizedPath = path.startsWith('/api/') ? path : `/api${path.startsWith('/') ? path : '/' + path}`;
+    const data = await request<T>(normalizedPath, {
       method: 'PATCH',
       body: JSON.stringify(body),
+    });
+    return { data };
+  },
+  put: async <T>(path: string, body: unknown) => {
+    const normalizedPath = path.startsWith('/api/') ? path : `/api${path.startsWith('/') ? path : '/' + path}`;
+    const data = await request<T>(normalizedPath, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+    return { data };
+  },
+  delete: async <T>(path: string) => {
+    const normalizedPath = path.startsWith('/api/') ? path : `/api${path.startsWith('/') ? path : '/' + path}`;
+    const data = await request<T>(normalizedPath, {
+      method: 'DELETE',
     });
     return { data };
   },

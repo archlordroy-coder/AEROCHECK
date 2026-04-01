@@ -30,84 +30,134 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-background via-background to-muted/50 p-4 animate-fade-in">
-      <div className="mb-8 flex flex-col items-center gap-3">
-        <div className="group flex h-20 w-20 items-center justify-center rounded-[2rem] bg-white shadow-panel ring-1 ring-border transition-all duration-500 hover:rotate-6 hover:scale-110">
-          <img src={appLogo} alt="AEROCHECK Logo" className="h-12 w-12 object-contain" />
+    <div className="min-h-screen flex animate-fade-in">
+      {/* Left side - Logo & Branding */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary/20 via-background to-muted items-center justify-center p-8">
+        <div className="flex flex-col items-center gap-6">
+          <div className="group flex h-40 w-40 items-center justify-center rounded-[3rem] bg-white shadow-2xl ring-4 ring-border/50 transition-all duration-500 hover:rotate-6 hover:scale-110">
+            <img src={appLogo} alt="AEROCHECK Logo" className="h-28 w-28 object-contain" />
+          </div>
+          <h1 className="text-5xl font-black tracking-tighter text-foreground drop-shadow-lg">AEROCHECK</h1>
+          <p className="text-xl text-muted-foreground font-medium">Gestion des Licences Aeroportuaires</p>
+          <div className="mt-8 text-center text-sm text-muted-foreground max-w-md">
+            <p className="mb-4">Plateforme de gestion des licences d'accès aéroportuaire pour l'ASECNA</p>
+            <div className="flex gap-4 justify-center">
+              <span className="px-3 py-1 bg-primary/10 rounded-full text-xs">Sécurisé</span>
+              <span className="px-3 py-1 bg-primary/10 rounded-full text-xs">Rapide</span>
+              <span className="px-3 py-1 bg-primary/10 rounded-full text-xs">Fiable</span>
+            </div>
+          </div>
         </div>
-        <h1 className="text-3xl font-black tracking-tighter text-foreground">AEROCHECK</h1>
-        <p className="text-sm text-muted-foreground">Gestion des Licences Aeroportuaires</p>
       </div>
 
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl">Connexion</CardTitle>
-          <CardDescription>
-            Entrez vos identifiants pour acceder a votre espace
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="nom@exemple.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
-                  required
-                />
-              </div>
+      {/* Right side - Login Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/50 p-4">
+        <Card className="w-full max-w-md border-0 shadow-none bg-transparent">
+          {/* Mobile logo (visible only on small screens) */}
+          <div className="lg:hidden flex flex-col items-center gap-3 mb-8">
+            <div className="group flex h-24 w-24 items-center justify-center rounded-[2rem] bg-white shadow-xl ring-2 ring-border/50">
+              <img src={appLogo} alt="AEROCHECK Logo" className="h-16 w-16 object-contain" />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Mot de passe</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Votre mot de passe"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
-                  required
-                />
-              </div>
-            </div>
-
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? (
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-              ) : (
-                'Se connecter'
-              )}
-            </Button>
-          </form>
-
-          <div className="mt-6 text-center text-sm">
-            <span className="text-muted-foreground">Pas encore de compte ?</span>{' '}
-            <Link to="/register" className="font-medium text-primary hover:underline">
-              {"S'inscrire"}
-            </Link>
+            <h1 className="text-3xl font-black tracking-tighter">AEROCHECK</h1>
           </div>
 
-          <div className="mt-6 rounded-lg border bg-muted/50 p-4">
-            <p className="mb-2 text-xs font-medium text-muted-foreground">Comptes de demonstration :</p>
-            <div className="space-y-1 text-xs text-muted-foreground">
-              <p><span className="font-medium">Admin:</span> admin@aerocheck.com</p>
-              <p><span className="font-medium">QIP:</span> qip1@aerocheck.com</p>
-              <p><span className="font-medium">DLAA:</span> dlaa1@aerocheck.com</p>
-              <p><span className="font-medium">Agent:</span> agent1@test.com</p>
-              <p className="pt-1 italic">Mot de passe: password123</p>
+          <CardHeader className="space-y-1 text-center lg:text-left">
+            <CardTitle className="text-2xl">Connexion</CardTitle>
+            <CardDescription>
+              Entrez vos identifiants pour acceder a votre espace
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="nom@exemple.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10 bg-white/80 backdrop-blur"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">Mot de passe</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Votre mot de passe"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10 bg-white/80 backdrop-blur"
+                    required
+                  />
+                </div>
+              </div>
+
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                ) : (
+                  'Se connecter'
+                )}
+              </Button>
+            </form>
+
+            <div className="mt-6 text-center text-sm">
+              <span className="text-muted-foreground">Pas encore de compte ?</span>{' '}
+              <Link to="/register" className="font-medium text-primary hover:underline">
+                {"S'inscrire"}
+              </Link>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+
+            <div className="mt-6 rounded-lg border bg-muted/50 p-4">
+              <p className="mb-3 text-xs font-medium text-muted-foreground">Comptes de demonstration (cliquez pour remplir) :</p>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { setEmail('admin@aerocheck.com'); setPassword('password123'); }}
+                  className="text-xs justify-start"
+                >
+                  <span className="font-medium">Admin</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { setEmail('qip1@aerocheck.com'); setPassword('password123'); }}
+                  className="text-xs justify-start"
+                >
+                  <span className="font-medium">QIP</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { setEmail('dlaa1@aerocheck.com'); setPassword('password123'); }}
+                  className="text-xs justify-start"
+                >
+                  <span className="font-medium">DLAA</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { setEmail('agent1@test.com'); setPassword('password123'); }}
+                  className="text-xs justify-start"
+                >
+                  <span className="font-medium">Agent</span>
+                </Button>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground text-center italic">Mot de passe: password123</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

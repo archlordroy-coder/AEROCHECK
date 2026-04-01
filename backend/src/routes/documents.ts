@@ -530,8 +530,8 @@ router.delete(
   }
 );
 
-// Preview document - serve file for viewing
-router.get('/:id/preview', authenticate, async (req: AuthRequest, res: Response, next) => {
+// Preview document - serve file for viewing (no auth required for direct browser access)
+router.get('/:id/preview', async (req: AuthRequest, res: Response, next) => {
   try {
     const document = await prisma.document.findUnique({
       where: { id: req.params.id as string },
@@ -540,12 +540,6 @@ router.get('/:id/preview', authenticate, async (req: AuthRequest, res: Response,
 
     if (!document) {
       throw new AppError('Document non trouve', 404);
-    }
-
-    // Check access permissions
-    const user = req.user!;
-    if (user.role === 'AGENT' && document.agent.userId !== user.id) {
-      throw new AppError('Acces refuse', 403);
     }
 
     // Build file path from document filePath

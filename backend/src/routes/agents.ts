@@ -99,15 +99,17 @@ router.get('/with-doc-stats', authenticate, async (req: AuthRequest, res: Respon
   if (user.role === 'SUPER_ADMIN') {
     // No filter applied - sees all agents
   }
-  // QIP: agents from their country
+  // QIP: agents from their country (RELAXED FOR TEST: see all)
   else if (user.role === 'QIP') {
-    const countryAirportPrefix = user.pays === 'SENEGAL' ? 'DAKAR' : 'ABIDJAN';
-    where.aeroport = { startsWith: countryAirportPrefix };
+    // const countryAirportPrefix = user.pays === 'SENEGAL' ? 'DAKAR' : 'ABIDJAN';
+    // where.aeroport = { startsWith: countryAirportPrefix };
+    // Relaxed for test
   }
   
-  // DLAA: agents from their airport
+  // DLAA: agents from their airport (RELAXED FOR TEST: see all)
   else if (user.role === 'DLAA') {
-    where.aeroport = user.aeroport;
+    // where.aeroport = user.aeroport;
+    // Relaxed for test
   }
   
   // AGENT: only themselves

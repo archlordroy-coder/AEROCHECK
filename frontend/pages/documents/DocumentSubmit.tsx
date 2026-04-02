@@ -28,7 +28,7 @@ export default function DocumentSubmit() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedType, setSelectedType] = useState<DocumentType | ''>('');
-  const [fileName, setFileName] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [fileType, setFileType] = useState<string | null>(null);
 
@@ -61,7 +61,7 @@ export default function DocumentSubmit() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      setFileName(file.name);
+      setSelectedFile(file);
       setFileType(file.type);
 
       if (previewUrl) {
@@ -76,7 +76,7 @@ export default function DocumentSubmit() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!agent || !selectedType || !fileName) {
+    if (!agent || !selectedType || !selectedFile) {
       toast.error('Veuillez remplir tous les champs');
       return;
     }
@@ -84,11 +84,12 @@ export default function DocumentSubmit() {
     setIsSubmitting(true);
 
     try {
-      await documentsApi.submit({
-        agentId: agent.id,
-        type: selectedType,
-        fileName
-      });
+      const formData = new FormData();
+      formData.append('agentId', agent.id);
+      formData.append('type', selectedType);
+      formData.append('file', selectedFile);
+
+      await documentsApi.submit(formData);
       
       toast.success('Document soumis avec succes');
       
@@ -98,7 +99,7 @@ export default function DocumentSubmit() {
       
       // Reset form
       setSelectedType('');
-      setFileName('');
+      setSelectedFile(null);
       if (previewUrl) {
         URL.revokeObjectURL(previewUrl);
         setPreviewUrl(null);
@@ -263,7 +264,7 @@ export default function DocumentSubmit() {
                   <Button
                     type="submit"
                     className="h-11 w-full shadow-md"
-                    disabled={!selectedType || !fileName || isSubmitting}
+                    disabled={!selectedType || !selectedFile || isSubmitting}
                   >
                     {isSubmitting ? (
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
@@ -284,7 +285,7 @@ export default function DocumentSubmit() {
               <CardHeader className="bg-primary/5 py-3">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-green-600" />
-                  Apercu: {fileName}
+                  Apercu: {selectedFile?.name}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">

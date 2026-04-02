@@ -43,11 +43,11 @@ const navItems: NavItem[] = [
   { label: 'Mon Profil', href: '/profile', icon: User, roles: ['AGENT'] },
   { label: 'Soumettre Documents', href: '/documents/submit', icon: FileText, roles: ['AGENT'] },
   { label: 'Ma Licence', href: '/license', icon: CreditCard, roles: ['AGENT'] },
-  { label: 'Verification QIP', href: '/qip', icon: CheckCircle, roles: ['QIP', 'SUPER_ADMIN'] },
-  { label: 'Emission DLAA', href: '/dlaa', icon: Award, roles: ['DLAA', 'SUPER_ADMIN'] },
+  { label: 'Verification QIP', href: '/qip', icon: CheckCircle, roles: ['QIP', 'SUPER_ADMIN', 'DNA'] },
+  { label: 'Emission DLAA', href: '/dlaa', icon: Award, roles: ['DLAA', 'SUPER_ADMIN', 'DNA'] },
   { label: 'Supervision', href: '/supervision', icon: BarChart3, roles: ['DNA', 'SUPER_ADMIN'] },
-  { label: 'Administration', href: '/admin', icon: Settings, roles: ['SUPER_ADMIN'] },
-  { label: 'Utilisateurs', href: '/admin/users', icon: Users, roles: ['SUPER_ADMIN'] },
+  { label: 'Administration', href: '/admin', icon: Settings, roles: ['SUPER_ADMIN', 'DNA'] },
+  { label: 'Utilisateurs', href: '/admin/users', icon: Users, roles: ['SUPER_ADMIN', 'DNA'] },
 ];
 
 export default function DashboardLayout() {

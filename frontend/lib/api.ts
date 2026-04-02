@@ -40,9 +40,13 @@ async function request<T>(
   const token = getToken();
   
   const headers: HeadersInit = {
-    'Content-Type': 'application/json',
     ...options.headers,
   };
+
+  // Only set Content-Type to application/json if body is not FormData
+  if (!(options.body instanceof FormData)) {
+    (headers as Record<string, string>)['Content-Type'] = 'application/json';
+  }
   
   if (token) {
     (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
@@ -168,10 +172,10 @@ export const documentsApi = {
 
   get: (id: string) => request<ApiResponse<Document>>(`/api/documents/${id}`),
 
-  submit: (data: { agentId: string; type: string; fileName: string }) =>
+  submit: (data: FormData) =>
     request<ApiResponse<Document>>('/api/documents', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: data,
     }),
 
   validate: (id: string, data: { status: 'VALIDE' | 'REJETE'; comment?: string }) =>

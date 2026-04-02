@@ -129,24 +129,24 @@ const AppRoutes = () => (
 
         {/* QIP routes */}
         <Route path="qip" element={
-          <ProtectedRoute roles={['QIP', 'SUPER_ADMIN']}>
+          <ProtectedRoute roles={['QIP', 'SUPER_ADMIN', 'DNA']}>
             <QIPDashboard />
           </ProtectedRoute>
         } />
         <Route path="qip/verify/:id" element={
-          <ProtectedRoute roles={['QIP', 'SUPER_ADMIN']}>
+          <ProtectedRoute roles={['QIP', 'SUPER_ADMIN', 'DNA']}>
             <DocumentVerify />
           </ProtectedRoute>
         } />
 
         {/* DLAA routes */}
         <Route path="dlaa" element={
-          <ProtectedRoute roles={['DLAA', 'SUPER_ADMIN']}>
+          <ProtectedRoute roles={['DLAA', 'SUPER_ADMIN', 'DNA']}>
             <DLAADashboard />
           </ProtectedRoute>
         } />
         <Route path="dlaa/issue/:id" element={
-          <ProtectedRoute roles={['DLAA', 'SUPER_ADMIN']}>
+          <ProtectedRoute roles={['DLAA', 'SUPER_ADMIN', 'DNA']}>
             <LicenseIssue />
           </ProtectedRoute>
         } />
@@ -160,12 +160,12 @@ const AppRoutes = () => (
 
         {/* Admin routes */}
         <Route path="admin" element={
-          <ProtectedRoute roles={['SUPER_ADMIN']}>
+          <ProtectedRoute roles={['SUPER_ADMIN', 'DNA']}>
             <AdminDashboard />
           </ProtectedRoute>
         } />
         <Route path="admin/users" element={
-          <ProtectedRoute roles={['SUPER_ADMIN']}>
+          <ProtectedRoute roles={['SUPER_ADMIN', 'DNA']}>
             <UserManagement />
           </ProtectedRoute>
         } />

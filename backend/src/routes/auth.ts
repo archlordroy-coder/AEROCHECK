@@ -13,7 +13,7 @@ const registerSchema = z.object({
   firstName: z.string().min(2, 'Prenom requis'),
   lastName: z.string().min(2, 'Nom requis'),
   phone: z.string().optional(),
-  role: z.enum(['AGENT', 'QIP', 'DLAA', 'SUPER_ADMIN']).optional()
+  role: z.enum(['AGENT', 'QIP', 'DLAA', 'DNA', 'SUPER_ADMIN']).optional()
 });
 
 const loginSchema = z.object({
@@ -157,7 +157,7 @@ router.get('/me', authenticate, async (req: AuthRequest, res) => {
 router.get('/users', authenticate, async (req: AuthRequest, res, next) => {
   try {
     // Only admin/superadmin can list all users
-    if (!['SUPER_ADMIN', 'ADMIN'].includes(req.user!.role)) {
+    if (!['SUPER_ADMIN', 'DNA'].includes(req.user!.role)) {
       throw new AppError('Acces refuse', 403);
     }
 

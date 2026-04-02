@@ -273,6 +273,19 @@ async function main() {
   });
   console.log('✅ SUPER_ADMIN: admin@aerocheck.com');
 
+  // DNA: dna@aerocheck.com
+  await prisma.user.create({
+    data: {
+      email: 'dna@aerocheck.com',
+      password,
+      firstName: 'Directeur',
+      lastName: 'National',
+      role: 'DNA',
+      phone: '+221770000000'
+    }
+  });
+  console.log('✅ DNA: dna@aerocheck.com');
+
   // QIP: qip1@aerocheck.com
   const senegalPays = paysCreated.find(p => p.code === 'SN');
   await prisma.user.create({

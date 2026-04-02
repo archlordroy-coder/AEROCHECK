@@ -25,16 +25,16 @@ const roleLabels: Record<UserRole, string> = {
   AGENT: 'Agent',
   QIP: 'Verificateur QIP',
   DLAA: 'Agent DLAA',
-  SUPERVISEUR: 'Superviseur',
-  ADMIN: 'Administrateur',
+  DNA: 'Superviseur DNA',
+  SUPER_ADMIN: 'Administrateur',
 };
 
 const roleColors: Record<UserRole, string> = {
   AGENT: 'bg-blue-100 text-blue-800',
   QIP: 'bg-amber-100 text-amber-800',
   DLAA: 'bg-emerald-100 text-emerald-800',
-  SUPERVISEUR: 'bg-purple-100 text-purple-800',
-  ADMIN: 'bg-red-100 text-red-800',
+  DNA: 'bg-purple-100 text-purple-800',
+  SUPER_ADMIN: 'bg-red-100 text-red-800',
 };
 
 export default function UserManagement() {
@@ -61,8 +61,8 @@ export default function UserManagement() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/auth/users');
-      setUsers(response.data);
+      const response = await api.get<{ success: boolean, data: User[] }>('/auth/users');
+      setUsers(response.data.data);
     } catch (error) {
       toast({
         title: 'Erreur',
@@ -300,8 +300,8 @@ export default function UserManagement() {
             <div className="text-2xl font-bold text-amber-600">
               {(userStats.byRole['QIP'] || 0) +
                 (userStats.byRole['DLAA'] || 0) +
-                (userStats.byRole['SUPERVISEUR'] || 0) +
-                (userStats.byRole['ADMIN'] || 0)}
+                (userStats.byRole['DNA'] || 0) +
+                (userStats.byRole['SUPER_ADMIN'] || 0)}
             </div>
           </CardContent>
         </Card>

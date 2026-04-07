@@ -78,6 +78,7 @@ export default function AgentProfile() {
   const [documents, setDocuments] = useState<AgentDocument[]>([]);
   const [licenses, setLicenses] = useState<License[]>([]);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -175,6 +176,9 @@ export default function AgentProfile() {
         return;
       }
       setPhotoFile(file);
+      // Create preview URL
+      const previewUrl = URL.createObjectURL(file);
+      setPhotoPreview(previewUrl);
     }
   };
 
@@ -187,7 +191,14 @@ export default function AgentProfile() {
       formData.append('type', 'PHOTO_IDENTITE');
       await documentsApi.upload(agent.id, formData);
       toast.success('Photo téléchargée avec succès');
+      
+      // Clean up preview URL
+      if (photoPreview) {
+        URL.revokeObjectURL(photoPreview);
+      }
       setPhotoFile(null);
+      setPhotoPreview(null);
+      
       // Refresh agent data to get updated photoUrl
       const agentRes = await agentsApi.getById(agent.id);
       setAgent(agentRes.data);
@@ -278,7 +289,13 @@ export default function AgentProfile() {
                       className="h-32 w-32 rounded-full bg-muted flex items-center justify-center overflow-hidden border-4 border-background shadow-lg cursor-pointer hover:ring-2 hover:ring-primary transition-all"
                       onClick={() => agent.photoUrl && window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/agents/${agent.id}/photo`, '_blank')}
                     >
-                      {agent.photoUrl ? (
+                      {photoPreview ? (
+                        <img 
+                          src={photoPreview}
+                          alt="Preview" 
+                          className="h-full w-full object-cover"
+                        />
+                      ) : agent.photoUrl ? (
                         <img 
                           src={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/agents/${agent.id}/photo`}
                           alt="Photo de profil" 
@@ -316,10 +333,23 @@ export default function AgentProfile() {
                       <p className="text-xs text-center text-muted-foreground">
                         {photoFile.name}
                       </p>
-                      <Button size="sm" onClick={uploadPhoto} className="w-full">
-                        <Upload className="mr-1 h-3 w-3" />
-                        Telecharger
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={uploadPhoto} className="flex-1">
+                          <Upload className="mr-1 h-3 w-3" />
+                          Confirmer
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => {
+                            if (photoPreview) URL.revokeObjectURL(photoPreview);
+                            setPhotoFile(null);
+                            setPhotoPreview(null);
+                          }}
+                        >
+                          Annuler
+                        </Button>
+                      </div>
                     </div>
                   )}
                   {agent.photoUrl && (

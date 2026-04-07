@@ -386,9 +386,13 @@ export default function AgentProfile() {
                   <div>
                     <p className="text-xs text-muted-foreground">Qualifications</p>
                     <div className="flex flex-wrap gap-1">
-                      {agent.qualifications?.map(q => (
-                        <Badge key={q} variant="outline" className="text-xs">{q}</Badge>
-                      )) || '-'}
+                      {Array.isArray(agent.qualifications) && agent.qualifications.length > 0 ? (
+                        agent.qualifications.map(q => (
+                          <Badge key={q} variant="outline" className="text-xs">{q}</Badge>
+                        ))
+                      ) : (
+                        <span className="text-sm text-muted-foreground">-</span>
+                      )}
                     </div>
                   </div>
                   <div>

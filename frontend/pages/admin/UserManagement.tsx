@@ -193,7 +193,7 @@ export default function UserManagement() {
             <DialogHeader>
               <DialogTitle>Creer un Utilisateur</DialogTitle>
               <DialogDescription>
-                Ajoutez un nouvel utilisateur au systeme AEROCHECK
+                Ajoutez un nouvel utilisateur au systeme ATCOCLICLE
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">

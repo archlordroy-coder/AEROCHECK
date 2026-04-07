@@ -13,7 +13,15 @@ const registerSchema = z.object({
   firstName: z.string().min(2, 'Prenom requis'),
   lastName: z.string().min(2, 'Nom requis'),
   phone: z.string().optional(),
-  role: z.enum(['AGENT', 'QIP', 'DLAA', 'DNA', 'SUPER_ADMIN']).optional()
+  role: z.enum(['AGENT', 'QIP', 'DLAA', 'DNA', 'SUPER_ADMIN']).optional(),
+  // ATCO specific fields
+  matricule: z.string().min(3, 'Matricule requis').optional(),
+  paysId: z.string().optional(),
+  aeroportId: z.string().optional(),
+  sexe: z.enum(['M', 'F']).optional(),
+  qualifications: z.array(z.string()).optional(),
+  whatsapp: z.string().optional(),
+  dateNaissance: z.string().optional()
 });
 
 const loginSchema = z.object({
@@ -34,6 +42,16 @@ router.post('/register', async (req, res, next) => {
       throw new AppError('Cet email est deja utilise', 400);
     }
 
+    // Check if matricule is already used
+    if (data.matricule) {
+      const existingAgent = await prisma.agent.findUnique({
+        where: { matricule: data.matricule }
+      });
+      if (existingAgent) {
+        throw new AppError('Ce matricule est deja utilise', 400);
+      }
+    }
+
     const hashedPassword = await bcrypt.hash(data.password, 12);
 
     const user = await prisma.user.create({
@@ -47,6 +65,43 @@ router.post('/register', async (req, res, next) => {
       }
     });
 
+    // Create agent record if ATCO-specific fields are provided
+    let agent = null;
+    if (data.matricule && data.paysId && data.aeroportId) {
+      // Get or create default nationalite
+      let nationaliteId = 'cm500000000000000000000001'; // Default: Sénégal
+      const nationalite = await prisma.nationalite.findFirst();
+      if (nationalite) {
+        nationaliteId = nationalite.id;
+      }
+
+      // Get or create default employeur
+      let employeurId = 'cm500000000000000000000001'; // Default: ASECNA
+      const employeur = await prisma.employeur.findFirst();
+      if (employeur) {
+        employeurId = employeur.id;
+      }
+
+      agent = await prisma.agent.create({
+        data: {
+          userId: user.id,
+          matricule: data.matricule,
+          paysId: data.paysId,
+          aeroportId: data.aeroportId,
+          sexe: data.sexe,
+          whatsapp: data.whatsapp,
+          qualifications: data.qualifications ? JSON.stringify(data.qualifications) : null,
+          nationaliteId: nationaliteId,
+          employeurId: employeurId,
+          dateNaissance: data.dateNaissance ? new Date(data.dateNaissance) : new Date(),
+          lieuNaissance: 'Non specifie',
+          adresse: 'Non specifie',
+          fonction: 'Controleur Aerien',
+          emailVerified: false
+        }
+      });
+    }
+
     const token = generateToken(user.id);
 
     res.status(201).json({
@@ -58,7 +113,8 @@ router.post('/register', async (req, res, next) => {
           role: user.role,
           firstName: user.firstName,
           lastName: user.lastName,
-          phone: user.phone
+          phone: user.phone,
+          agent: agent
         },
         token
       }

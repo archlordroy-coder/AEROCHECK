@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { User, Agent, Role } from '@shared/types';
+import type { RegisterRequest } from '@shared/types';
 import { authApi, setToken, removeToken } from '@/lib/api';
 
 interface UserWithAgent extends User {
@@ -11,7 +12,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: { email: string; password: string; firstName: string; lastName: string; phone?: string }) => Promise<void>;
+  register: (data: RegisterRequest) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
   hasRole: (...roles: Role[]) => boolean;
@@ -63,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const register = async (data: { email: string; password: string; firstName: string; lastName: string; phone?: string }) => {
+  const register = async (data: RegisterRequest) => {
     const response = await authApi.register(data);
     if (response.success && response.data) {
       setToken(response.data.token);

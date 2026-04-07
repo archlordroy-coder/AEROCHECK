@@ -379,6 +379,33 @@ router.patch(
   }
 );
 
+// Get agent licenses
+router.get('/:id/licenses', authenticate, async (req: AuthRequest, res: Response, next) => {
+  try {
+    const agent = await prisma.agent.findUnique({
+      where: { id: req.params.id }
+    });
+
+    if (!agent) {
+      throw new AppError('Agent non trouve', 404);
+    }
+
+    // Only owner or authorized roles can view licenses
+    if (req.user!.role === 'AGENT' && agent.userId !== req.user!.id) {
+      throw new AppError('Acces refuse', 403);
+    }
+
+    const licenses = await prisma.license.findMany({
+      where: { agentId: req.params.id },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json({ success: true, data: licenses });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Delete agent (ADMIN only)
 router.delete(
   '/:id',

@@ -219,7 +219,7 @@ export default function AirportManagement() {
             <DialogHeader>
               <DialogTitle>Ajouter un Aeroport</DialogTitle>
               <DialogDescription>
-                Ajoutez un nouvel aeroport au systeme AEROCHECK
+                Ajoutez un nouvel aeroport au systeme ATCOCLICLE
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">

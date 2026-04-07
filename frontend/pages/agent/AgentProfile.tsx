@@ -1,36 +1,24 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { agentsApi, referencesApi } from '@/lib/api';
+import { agentsApi, referencesApi, documentsApi } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { User, MapPin, Briefcase, Plane, Calendar, Save, Loader2 } from 'lucide-react';
-import { AGENT_STATUS_LABELS } from '@shared/types';
-import type { Agent } from '@shared/types';
+import { User, MapPin, Briefcase, Plane, Calendar, Save, Loader2, Camera, FileText, Award, Clock, Upload, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { AGENT_STATUS_LABELS, LICENSE_STATUS_LABELS, DOCUMENT_TYPE_LABELS } from '@shared/types';
+import type { Agent, Document as AgentDocument, License } from '@shared/types';
 
-const ZONES = [
-  'Zone publique',
-  'Zone reservee',
-  'Zone de surete a acces reglemente (ZSAR)',
-  'Zone de trafic',
-  'Zone de fret'
-];
+const QUALIFICATIONS_OPTIONS = ['ADC', 'APP', 'ACC', 'APS'];
 
 const FONCTIONS = [
-  'Agent de piste',
-  'Agent de surete',
-  'Agent de handling',
-  'Technicien aeronautique',
-  'Controleur acces',
-  'Agent de check-in',
-  'Agent de fret',
-  'Pompier aeroportuaire'
+  'Controleur Aerien',
+  'Instructeur',
+  'Superviseur'
 ];
 
 interface Nationalite {
@@ -75,15 +63,22 @@ export default function AgentProfile() {
   
   const [formData, setFormData] = useState({
     dateNaissance: '',
-    lieuNaissance: '',
     nationaliteId: '',
     adresse: '',
     fonction: '',
     employeurId: '',
     paysId: '',
     aeroportId: '',
-    zoneAcces: [] as string[]
+    sexe: '',
+    qualifications: [] as string[],
+    whatsapp: ''
   });
+
+  // Documents and licenses
+  const [documents, setDocuments] = useState<AgentDocument[]>([]);
+  const [licenses, setLicenses] = useState<License[]>([]);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -108,14 +103,15 @@ export default function AgentProfile() {
           setAgent(agentData);
           setFormData({
             dateNaissance: agentData.dateNaissance.split('T')[0],
-            lieuNaissance: agentData.lieuNaissance,
             nationaliteId: agentData.nationaliteId || '',
             adresse: agentData.adresse,
             fonction: agentData.fonction,
             employeurId: agentData.employeurId || '',
             paysId: agentData.paysId || '',
             aeroportId: agentData.aeroportId || '',
-            zoneAcces: JSON.parse(agentData.zoneAcces as unknown as string || '[]')
+            sexe: agentData.sexe || '',
+            qualifications: agentData.qualifications || [],
+            whatsapp: agentData.whatsapp || ''
           });
           
           // Filter airports for the selected country
@@ -123,6 +119,14 @@ export default function AgentProfile() {
             const filtered = aerRes.data.filter((a: Aeroport) => a.paysId === agentData.paysId);
             setAeroportsFiltered(filtered);
           }
+
+          // Fetch documents and licenses
+          const [docsRes, licensesRes] = await Promise.all([
+            documentsApi.list({ agentId: agentData.id }),
+            agentsApi.getLicenses(agentData.id)
+          ]);
+          setDocuments(docsRes.data);
+          setLicenses(licensesRes.data);
         }
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -150,13 +154,46 @@ export default function AgentProfile() {
     });
   };
 
-  const handleZoneChange = (zone: string, checked: boolean) => {
+  const handleQualificationChange = (qual: string, checked: boolean) => {
     setFormData(prev => ({
       ...prev,
-      zoneAcces: checked 
-        ? [...prev.zoneAcces, zone]
-        : prev.zoneAcces.filter(z => z !== zone)
+      qualifications: checked 
+        ? [...prev.qualifications, qual]
+        : prev.qualifications.filter(q => q !== qual)
     }));
+  };
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('La photo ne doit pas dépasser 5MB');
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        toast.error('Veuillez sélectionner une image');
+        return;
+      }
+      setPhotoFile(file);
+    }
+  };
+
+  const uploadPhoto = async () => {
+    if (!photoFile || !agent) return;
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', photoFile);
+      formData.append('type', 'PHOTO_IDENTITE');
+      await documentsApi.upload(agent.id, formData);
+      toast.success('Photo téléchargée avec succès');
+      setPhotoFile(null);
+      // Refresh documents
+      const docsRes = await documentsApi.list({ agentId: agent.id });
+      setDocuments(docsRes.data);
+    } catch (error) {
+      toast.error('Erreur lors du téléchargement de la photo');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -173,10 +210,16 @@ export default function AgentProfile() {
         const random = Math.floor(Math.random() * 100000).toString().padStart(5, '0');
         const matricule = `AG${year}${random}`;
         
-        await agentsApi.create({ ...formData, matricule });
+        await agentsApi.create({ 
+          ...formData, 
+          matricule,
+          lieuNaissance: 'Non specifie',
+          zoneAcces: [],
+          emailVerified: false
+        });
         toast.success('Profil cree avec succes');
         await refreshUser();
-        navigate('/dashboard');
+        navigate('/app/dashboard');
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Erreur lors de la sauvegarde');
@@ -220,26 +263,164 @@ export default function AgentProfile() {
       </div>
 
       {agent && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-wrap items-center gap-6">
-              <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">
-                  <span className="text-muted-foreground">Matricule:</span>{' '}
-                  <span className="font-mono font-medium">{agent.matricule}</span>
-                </span>
+        <>
+          {/* Photo and Summary Card */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-6">
+                {/* Photo Section */}
+                <div className="flex flex-col items-center gap-3">
+                  <div className="relative">
+                    <div className="h-32 w-32 rounded-full bg-muted flex items-center justify-center overflow-hidden border-4 border-background shadow-lg">
+                      {agent.photoUrl ? (
+                        <img src={agent.photoUrl} alt="Photo" className="h-full w-full object-cover" />
+                      ) : (
+                        <Camera className="h-12 w-12 text-muted-foreground" />
+                      )}
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoChange}
+                      className="hidden"
+                    />
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="absolute -bottom-2 -right-2 rounded-full h-8 w-8 p-0"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Camera className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {photoFile && (
+                    <Button size="sm" onClick={uploadPhoto} className="w-full">
+                      <Upload className="mr-1 h-3 w-3" />
+                      Telecharger
+                    </Button>
+                  )}
+                </div>
+
+                {/* Agent Info Summary */}
+                <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Matricule</p>
+                    <p className="font-mono font-medium">{agent.matricule}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Sexe</p>
+                    <p className="font-medium">{agent.sexe === 'M' ? 'Masculin' : agent.sexe === 'F' ? 'Feminin' : '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Aeroport</p>
+                    <p className="font-medium">{agent.aeroport?.nom || agent.aeroportId}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Pays</p>
+                    <p className="font-medium">{agent.pays?.nom || agent.paysId}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Qualifications</p>
+                    <div className="flex flex-wrap gap-1">
+                      {agent.qualifications?.map(q => (
+                        <Badge key={q} variant="outline" className="text-xs">{q}</Badge>
+                      )) || '-'}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">WhatsApp</p>
+                    <p className="font-medium">{agent.whatsapp || '-'}</p>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Plane className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">
-                  <span className="text-muted-foreground">Aeroport:</span>{' '}
-                  <span className="font-medium">{agent.aeroport?.nom || agent.aeroportId}</span>
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          {/* Documents & Licenses */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Documents List */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <FileText className="h-4 w-4" />
+                  Documents soumis ({documents.length})
+                </CardTitle>
+                <CardDescription>
+                  Etat de votre dossier documentaire
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {documents.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Aucun document soumis
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {documents.map((doc) => (
+                      <div key={doc.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">{DOCUMENT_TYPE_LABELS[doc.type as keyof typeof DOCUMENT_TYPE_LABELS] || doc.type}</span>
+                        </div>
+                        <Badge className={
+                          doc.status === 'VALIDE' ? 'bg-green-500/10 text-green-600' :
+                          doc.status === 'REJETE' ? 'bg-red-500/10 text-red-600' :
+                          'bg-yellow-500/10 text-yellow-600'
+                        }>
+                          {doc.status === 'VALIDE' && <CheckCircle className="mr-1 h-3 w-3" />}
+                          {doc.status === 'REJETE' && <XCircle className="mr-1 h-3 w-3" />}
+                          {doc.status === 'EN_ATTENTE' && <Clock className="mr-1 h-3 w-3" />}
+                          {doc.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* License History */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Award className="h-4 w-4" />
+                  Historique des licences ({licenses.length})
+                </CardTitle>
+                <CardDescription>
+                  Vos licences delivrees
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {licenses.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Aucune licence delivree
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {licenses.map((license) => (
+                      <div key={license.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                        <div>
+                          <p className="text-sm font-medium">{license.numero}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Exp: {new Date(license.dateExpiration).toLocaleDateString('fr-FR')}
+                          </p>
+                        </div>
+                        <Badge className={
+                          license.status === 'ACTIVE' ? 'bg-green-500/10 text-green-600' :
+                          license.status === 'EXPIREE' ? 'bg-red-500/10 text-red-600' :
+                          'bg-yellow-500/10 text-yellow-600'
+                        }>
+                          {LICENSE_STATUS_LABELS[license.status as keyof typeof LICENSE_STATUS_LABELS] || license.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </>
       )}
 
       <form onSubmit={handleSubmit}>
@@ -264,26 +445,32 @@ export default function AgentProfile() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="dateNaissance">Date de naissance</Label>
-                <Input
-                  id="dateNaissance"
-                  type="date"
-                  value={formData.dateNaissance}
-                  onChange={(e) => handleChange('dateNaissance', e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="lieuNaissance">Lieu de naissance</Label>
-                <Input
-                  id="lieuNaissance"
-                  placeholder="Ville de naissance"
-                  value={formData.lieuNaissance}
-                  onChange={(e) => handleChange('lieuNaissance', e.target.value)}
-                  required
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="dateNaissance">Date de naissance</Label>
+                  <Input
+                    id="dateNaissance"
+                    type="date"
+                    value={formData.dateNaissance}
+                    onChange={(e) => handleChange('dateNaissance', e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sexe">Sexe</Label>
+                  <Select 
+                    value={formData.sexe}
+                    onValueChange={(value) => handleChange('sexe', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selectionnez" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="M">Masculin</SelectItem>
+                      <SelectItem value="F">Feminin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -311,6 +498,16 @@ export default function AgentProfile() {
                   value={formData.adresse}
                   onChange={(e) => handleChange('adresse', e.target.value)}
                   required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="whatsapp">WhatsApp</Label>
+                <Input
+                  id="whatsapp"
+                  placeholder="+221 77 123 4567"
+                  value={formData.whatsapp}
+                  onChange={(e) => handleChange('whatsapp', e.target.value)}
                 />
               </div>
             </CardContent>
@@ -395,19 +592,25 @@ export default function AgentProfile() {
               </div>
 
               <div className="space-y-3">
-                <Label>Zones d&apos;acces demandees</Label>
-                <div className="space-y-2">
-                  {ZONES.map(zone => (
-                    <div key={zone} className="flex items-center gap-2">
-                      <Checkbox
-                        id={zone}
-                        checked={formData.zoneAcces.includes(zone)}
-                        onCheckedChange={(checked) => handleZoneChange(zone, checked as boolean)}
+                <Label>Qualifications ATCO</Label>
+                <div className="flex flex-wrap gap-2">
+                  {QUALIFICATIONS_OPTIONS.map((qual) => (
+                    <label
+                      key={qual}
+                      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm cursor-pointer transition-colors ${
+                        formData.qualifications.includes(qual)
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted hover:bg-muted/80'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={formData.qualifications.includes(qual)}
+                        onChange={(e) => handleQualificationChange(qual, e.target.checked)}
                       />
-                      <Label htmlFor={zone} className="text-sm font-normal cursor-pointer">
-                        {zone}
-                      </Label>
-                    </div>
+                      {qual}
+                    </label>
                   ))}
                 </div>
               </div>

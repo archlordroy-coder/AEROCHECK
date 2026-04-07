@@ -8,6 +8,7 @@ import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 
 // Pages
+import LandingPage from "@/pages/LandingPage";
 import LoginPage from "@/pages/auth/LoginPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -50,7 +51,7 @@ function ProtectedRoute({ children, roles }: { children: React.ReactNode; roles?
   }
 
   if (roles && user && !roles.includes(user.role)) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/app/dashboard" replace />;
   }
 
   return <>{children}</>;
@@ -69,7 +70,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/app/dashboard" replace />;
   }
 
   return <>{children}</>;
@@ -106,6 +107,14 @@ const AppRoutes = () => (
   >
     <Routes>
       {/* Public routes */}
+      <Route
+        path="/"
+        element={
+          <PublicRoute>
+            <LandingPage />
+          </PublicRoute>
+        }
+      />
       <Route path="/login" element={
         <PublicRoute><LoginPage /></PublicRoute>
       } />
@@ -114,12 +123,12 @@ const AppRoutes = () => (
       } />
 
       {/* Protected routes with dashboard layout */}
-      <Route path="/" element={
+      <Route path="/app" element={
         <ProtectedRoute>
           <DashboardLayout />
         </ProtectedRoute>
       }>
-        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route index element={<Navigate to="/app/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardRouter />} />
         
         {/* Agent routes */}

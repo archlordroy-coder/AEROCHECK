@@ -55,6 +55,11 @@ export interface Agent {
   aeroportId: string;
   zoneAcces: string[];
   status: AgentStatus;
+  sexe?: Sexe;
+  qualifications?: string[];
+  whatsapp?: string;
+  photoUrl?: string;
+  emailVerified: boolean;
   documents?: Document[];
   licenses?: License[];
   user?: User;
@@ -134,6 +139,14 @@ export interface RegisterRequest {
   firstName: string;
   lastName: string;
   phone?: string;
+  // ATCO specific fields
+  matricule?: string;
+  paysId?: string;
+  aeroportId?: string;
+  sexe?: Sexe;
+  qualifications?: string[];
+  whatsapp?: string;
+  dateNaissance?: string;
 }
 
 export interface AuthResponse {

@@ -39,15 +39,15 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: 'Tableau de bord', href: '/dashboard', icon: LayoutDashboard, roles: ['AGENT', 'QIP', 'DLAA', 'DNA', 'SUPER_ADMIN'] },
-  { label: 'Mon Profil', href: '/profile', icon: User, roles: ['AGENT'] },
-  { label: 'Soumettre Documents', href: '/documents/submit', icon: FileText, roles: ['AGENT'] },
-  { label: 'Ma Licence', href: '/license', icon: CreditCard, roles: ['AGENT'] },
-  { label: 'Verification QIP', href: '/qip', icon: CheckCircle, roles: ['QIP', 'SUPER_ADMIN', 'DNA'] },
-  { label: 'Emission DLAA', href: '/dlaa', icon: Award, roles: ['DLAA', 'SUPER_ADMIN', 'DNA'] },
-  { label: 'Supervision', href: '/supervision', icon: BarChart3, roles: ['DNA', 'SUPER_ADMIN'] },
-  { label: 'Administration', href: '/admin', icon: Settings, roles: ['SUPER_ADMIN', 'DNA'] },
-  { label: 'Utilisateurs', href: '/admin/users', icon: Users, roles: ['SUPER_ADMIN', 'DNA'] },
+  { label: 'Tableau de bord', href: '/app/dashboard', icon: LayoutDashboard, roles: ['AGENT', 'QIP', 'DLAA', 'DNA', 'SUPER_ADMIN'] },
+  { label: 'Mon Profil', href: '/app/profile', icon: User, roles: ['AGENT'] },
+  { label: 'Soumettre Documents', href: '/app/documents/submit', icon: FileText, roles: ['AGENT'] },
+  { label: 'Ma Licence', href: '/app/license', icon: CreditCard, roles: ['AGENT'] },
+  { label: 'Verification QIP', href: '/app/qip', icon: CheckCircle, roles: ['QIP', 'SUPER_ADMIN', 'DNA'] },
+  { label: 'Emission DLAA', href: '/app/dlaa', icon: Award, roles: ['DLAA', 'SUPER_ADMIN', 'DNA'] },
+  { label: 'Supervision', href: '/app/supervision', icon: BarChart3, roles: ['DNA', 'SUPER_ADMIN'] },
+  { label: 'Administration', href: '/app/admin', icon: Settings, roles: ['SUPER_ADMIN', 'DNA'] },
+  { label: 'Utilisateurs', href: '/app/admin/users', icon: Users, roles: ['SUPER_ADMIN', 'DNA'] },
 ];
 
 export default function DashboardLayout() {
@@ -89,12 +89,12 @@ export default function DashboardLayout() {
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground overflow-hidden">
             <img
               src={appLogo}
-              alt="Logo AEROCHECK"
+              alt="Logo ATCOCLICLE"
               className="h-8 w-8 object-contain"
             />
           </div>
           <div>
-            <h1 className="text-lg font-bold">AEROCHECK</h1>
+            <h1 className="text-lg font-bold">ATCOCLICLE</h1>
             <p className="text-xs text-sidebar-foreground/60">ASECNA</p>
           </div>
           <Button 

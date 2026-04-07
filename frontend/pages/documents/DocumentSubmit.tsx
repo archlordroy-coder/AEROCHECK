@@ -169,7 +169,7 @@ export default function DocumentSubmit() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
+        <Button variant="ghost" size="icon" onClick={() => navigate('/app/dashboard')}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>

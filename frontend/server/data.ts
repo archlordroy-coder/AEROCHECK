@@ -1,16 +1,16 @@
 import { OverviewResponse } from "@shared/api";
 
 export const overviewData: OverviewResponse = {
-  productName: "AEROCHECK",
-  tagline: "Plateforme de gestion des licences aeroportuaires",
+  productName: "ATCOCLICLE",
+  tagline: "ATCO Licence Validity Monitor",
   description:
-    "AEROCHECK centralise les dossiers reglementaires, digitalise le circuit QIP puis DLAA, structure la gouvernance multi-pays et impose une administration complete des comptes, permissions et donnees.",
+    "ATCOCLICLE assure le suivi de la validite des documents qui permettent la delivrance et le renouvellement des licences des controleurs aeriens de l'ASECNA.",
   objectives: [
-    "Centraliser la gestion des licences sur une plateforme unique et securisee.",
-    "Automatiser les alertes d'expiration des documents critiques.",
+    "Assurer le monitoring de l'etat des licences ATCO (valide, expiree, suspendue).",
+    "Automatiser les alertes d'expiration des trois documents critiques.",
     "Digitaliser la soumission, la verification QIP et la validation DLAA.",
-    "Offrir une tracabilite complete des actions et decisions.",
-    "Permettre a un super admin de gouverner toutes les donnees et tous les comptes.",
+    "Garantir securite, fiabilite, tracabilite et efficacite du circuit.",
+    "Offrir une vision multi-pays avec tri par pays et aeroport.",
   ],
   metrics: [
     {

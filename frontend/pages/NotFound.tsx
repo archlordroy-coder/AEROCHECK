@@ -22,7 +22,7 @@ export default function NotFound() {
           Route introuvable
         </p>
         <h1 className="mt-3 font-display text-4xl font-black tracking-tight text-foreground md:text-5xl">
-          Cet ecran n'existe pas encore dans le parcours AEROCHECK.
+          Cet ecran n'existe pas encore dans le parcours ATCOCLICLE.
         </h1>
         <p className="mt-4 text-base leading-8 text-muted-foreground">
           L'interface a ete recentree sur le centre de pilotage et les postes
@@ -36,14 +36,14 @@ export default function NotFound() {
             className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-panel transition-transform hover:-translate-y-0.5"
           >
             <Home className="h-4 w-4" />
-            Ouvrir le pilotage
+            Retour a l'accueil
           </Link>
           <Link
-            to="/portail"
+            to="/app"
             className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-background px-5 py-3 text-sm font-semibold text-foreground shadow-panel transition-transform hover:-translate-y-0.5"
           >
             <LayoutDashboard className="h-4 w-4 text-primary" />
-            Voir les postes metier
+            Ouvrir l'application
           </Link>
         </div>
       </div>

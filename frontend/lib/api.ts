@@ -117,7 +117,7 @@ export const agentsApi = {
 
   get: (id: string) => request<ApiResponse<Agent>>(`/api/agents/${id}`),
 
-  create: (data: Omit<Agent, 'id' | 'userId' | 'matricule' | 'status' | 'createdAt' | 'updatedAt'>) =>
+  create: (data: Omit<Agent, 'id' | 'userId' | 'status' | 'createdAt' | 'updatedAt'>) =>
     request<ApiResponse<Agent>>('/api/agents', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -156,6 +156,9 @@ export const agentsApi = {
     request<ApiResponse<void>>(`/api/agents/${id}`, {
       method: 'DELETE',
     }),
+
+  getLicenses: (agentId: string) =>
+    request<ApiResponse<License[]>>(`/api/agents/${agentId}/licenses`),
 };
 
 // Documents API
@@ -187,6 +190,12 @@ export const documentsApi = {
   delete: (id: string) =>
     request<ApiResponse<void>>(`/api/documents/${id}`, {
       method: 'DELETE',
+    }),
+
+  upload: (agentId: string, data: FormData) =>
+    request<ApiResponse<Document>>(`/api/agents/${agentId}/documents`, {
+      method: 'POST',
+      body: data,
     }),
 };
 

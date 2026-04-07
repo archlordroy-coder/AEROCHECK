@@ -66,7 +66,7 @@ export default function LicenseView() {
             Profil agent requis
           </CardTitle>
           <CardDescription>
-            Vous devez d&apos;abord creer votre profil agent.
+            Vous devez d&apos;abord creer votre profil ATCO.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -148,7 +148,7 @@ export default function LicenseView() {
           <div className="bg-gradient-to-br from-primary to-primary/80 p-6 text-primary-foreground">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm opacity-80">ASECNA - AEROCHECK</p>
+                <p className="text-sm opacity-80">ASECNA - ATCOCLICLE</p>
                 <h2 className="text-xl font-bold mt-1">Licence DLAA</h2>
               </div>
               <CreditCard className="h-10 w-10 opacity-80" />
@@ -184,7 +184,7 @@ export default function LicenseView() {
                   <MapPin className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">Aeroport</span>
                 </div>
-                <span className="font-medium text-sm">{agent.aeroport}</span>
+                <span className="font-medium text-sm">{agent.aeroport?.nom || agent.aeroportId}</span>
               </div>
 
               <Separator />
@@ -280,12 +280,12 @@ export default function LicenseView() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Employeur</p>
-              <p className="font-medium">{agent.employeur}</p>
+              <p className="font-medium">{agent.employeur?.nom || agent.employeurId}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Zones d&apos;acces</p>
               <p className="font-medium text-sm">
-                {JSON.parse(agent.zoneAcces as unknown as string || '[]').join(', ') || 'Non definies'}
+                {agent.zoneAcces.join(', ') || 'Non definies'}
               </p>
             </div>
           </div>

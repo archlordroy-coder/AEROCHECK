@@ -22,9 +22,9 @@ export default function LandingPage() {
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link to="/" className="flex items-center gap-3 transition-transform hover:scale-105">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-border">
-              <img src={appLogo} alt="AEROCHECK Logo" className="h-7 w-7 object-contain" />
+              <img src={appLogo} alt="ATCOCLICLE Logo" className="h-7 w-7 object-contain" />
             </div>
-            <span className="text-xl font-black tracking-tight text-foreground">AEROCHECK</span>
+            <span className="text-xl font-black tracking-tight text-foreground">ATCOCLICLE</span>
           </Link>
           <nav className="hidden md:flex items-center gap-6">
             <a href="#fonctionnalites" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
@@ -57,11 +57,11 @@ export default function LandingPage() {
               Plateforme Officielle ASECNA
             </Badge>
             <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-6 text-balance text-slate-950">
-              Gestion des Licences Aeroportuaires
+              Gestion des Licences des ATCOS
             </h1>
             <p className="text-xl text-muted-foreground mb-10 text-pretty leading-relaxed">
-              La plateforme digitale de gestion des licences pour les agents aeroportuaires 
-              de la zone ASECNA. Simplifiez vos demarches administratives.
+              Plateforme de gestions des licenses des controleurs aeriens de l'ASECNA.
+              Assurez le suivi de la validite des documents qui permettent la delivrance et le renouvellement.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/register">
@@ -94,11 +94,11 @@ export default function LandingPage() {
             </div>
             <div className="text-center">
               <div className="text-3xl md:text-4xl font-bold text-primary">10K+</div>
-              <div className="text-sm text-muted-foreground">Agents Licencies</div>
+              <div className="text-sm text-muted-foreground">ATCOS suivis</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-primary">98%</div>
-              <div className="text-sm text-muted-foreground">Taux de Satisfaction</div>
+              <div className="text-3xl md:text-4xl font-bold text-primary">3</div>
+              <div className="text-sm text-muted-foreground">Documents critiques</div>
             </div>
           </div>
         </div>
@@ -110,7 +110,7 @@ export default function LandingPage() {
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold mb-4">Fonctionnalites Principales</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Une solution complete pour la gestion des licences aeroportuaires
+              Une solution complete pour le suivi de validite et la tracabilite des licences ATCO
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -121,7 +121,7 @@ export default function LandingPage() {
                 </div>
                 <CardTitle>Inscription en Ligne</CardTitle>
                 <CardDescription>
-                  Creez votre profil agent et soumettez vos documents en toute simplicite
+                  Creez votre compte ATCO et deposez les documents requis en toute simplicite
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -143,7 +143,7 @@ export default function LandingPage() {
                 </div>
                 <CardTitle>Emission DLAA</CardTitle>
                 <CardDescription>
-                  Obtention rapide de votre licence aeroportuaire officielle
+                  Emission et suivi de l'etat de votre licence de controleur aerien
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -165,7 +165,7 @@ export default function LandingPage() {
                 </div>
                 <CardTitle>Suivi en Temps Reel</CardTitle>
                 <CardDescription>
-                  Suivez l&apos;etat de votre dossier a chaque etape du processus
+                  Suivez l'etat global et la validite de vos documents a chaque etape
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -190,7 +190,7 @@ export default function LandingPage() {
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold mb-4">Processus d&apos;Obtention</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Quatre etapes simples pour obtenir votre licence aeroportuaire
+              Quatre etapes simples pour obtenir votre licence de controleur aerien
             </p>
           </div>
           <div className="grid md:grid-cols-4 gap-8">
@@ -200,7 +200,7 @@ export default function LandingPage() {
               </div>
               <h3 className="font-semibold mb-2">Inscription</h3>
               <p className="text-sm text-muted-foreground">
-                Creez votre compte et remplissez votre profil agent
+                Creez votre compte et remplissez votre profil ATCO
               </p>
             </div>
             <div className="text-center">
@@ -209,7 +209,7 @@ export default function LandingPage() {
               </div>
               <h3 className="font-semibold mb-2">Documents</h3>
               <p className="text-sm text-muted-foreground">
-                Soumettez vos pieces justificatives requises
+                Soumettez les documents requis pour la delivrance de la licence
               </p>
             </div>
             <div className="text-center">
@@ -240,7 +240,7 @@ export default function LandingPage() {
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold mb-4">Aeroports Partenaires</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Principaux aeroports couverts par la plateforme AEROCHECK
+              Principaux aeroports couverts par la plateforme ATCOCLICLE
             </p>
           </div>
           <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -274,7 +274,7 @@ export default function LandingPage() {
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-4">Pret a commencer ?</h2>
           <p className="text-primary-foreground/80 mb-8 max-w-2xl mx-auto">
-            Rejoignez les milliers d&apos;agents qui utilisent AEROCHECK pour gerer leurs licences aeroportuaires.
+            Rejoignez les milliers d'ATCOS qui utilisent ATCOCLICLE pour suivre l'etat de validite de leurs documents.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/register">
@@ -299,12 +299,12 @@ export default function LandingPage() {
             <div>
               <div className="flex items-center gap-3 mb-4">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-border">
-                  <img src={appLogo} alt="AEROCHECK Logo" className="h-7 w-7 object-contain" />
+                  <img src={appLogo} alt="ATCOCLICLE Logo" className="h-7 w-7 object-contain" />
                 </div>
-                <span className="text-lg font-bold tracking-tight">AEROCHECK</span>
+                <span className="text-lg font-bold tracking-tight">ATCOCLICLE</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                Plateforme officielle de gestion des licences aeroportuaires ASECNA.
+                Plateforme officielle de gestion des licences des ATCOS ASECNA.
               </p>
             </div>
             <div>
@@ -333,7 +333,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground">
-            <p>&copy; 2024 AEROCHECK - ASECNA. Tous droits reserves.</p>
+            <p>&copy; 2024 ATCOCLICLE - ASECNA. Tous droits reserves.</p>
           </div>
         </div>
       </footer>

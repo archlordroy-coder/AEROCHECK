@@ -47,6 +47,11 @@ model Agent {
   aeroport         Aeroport    @relation(fields: [aeroportId], references: [id])
   zoneAcces        String      @default("[]")
   status           String      @default("EN_ATTENTE")
+  sexe             String?     // M or F
+  qualifications   String?     // JSON array of qualifications
+  whatsapp         String?     // WhatsApp number
+  photoUrl         String?     // Profile photo URL
+  emailVerified    Boolean     @default(false)
   documents        Document[]
   licenses         License[]
   createdAt        DateTime    @default(now())

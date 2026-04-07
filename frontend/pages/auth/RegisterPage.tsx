@@ -5,9 +5,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import appLogo from "@/logo/logosansfond.png";
-import { Lock, Mail, User, Phone } from 'lucide-react';
+import { Lock, Mail, User, Phone, Calendar, MapPin, Briefcase, GraduationCap } from 'lucide-react';
+
+const QUALIFICATIONS_OPTIONS = [
+  'ADC',
+  'APP',
+  'ACC',
+  'APS'
+];
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -19,6 +27,14 @@ export default function RegisterPage() {
     firstName: '',
     lastName: '',
     phone: '',
+    // ATCO fields
+    matricule: '',
+    paysId: '',
+    aeroportId: '',
+    sexe: '',
+    qualifications: [] as string[],
+    whatsapp: '',
+    dateNaissance: '',
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,6 +54,12 @@ export default function RegisterPage() {
       return;
     }
 
+    // Validate ATCO required fields
+    if (!formData.matricule || !formData.paysId || !formData.aeroportId) {
+      toast.error('Veuillez remplir tous les champs obligatoires (matricule, pays, aeroport)');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -47,8 +69,16 @@ export default function RegisterPage() {
         firstName: formData.firstName,
         lastName: formData.lastName,
         phone: formData.phone || undefined,
+        // ATCO fields
+        matricule: formData.matricule,
+        paysId: formData.paysId,
+        aeroportId: formData.aeroportId,
+        sexe: formData.sexe as 'M' | 'F' | undefined,
+        qualifications: formData.qualifications.length > 0 ? formData.qualifications : undefined,
+        whatsapp: formData.whatsapp || undefined,
+        dateNaissance: formData.dateNaissance || undefined,
       });
-      toast.success('Inscription reussie ! Bienvenue sur AEROCHECK');
+      toast.success('Inscription reussie ! Bienvenue sur ATCOCLICLE');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erreur lors de l'inscription");
     } finally {
@@ -62,16 +92,17 @@ export default function RegisterPage() {
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary/20 via-background to-muted items-center justify-center p-8">
         <div className="flex flex-col items-center gap-6">
           <div className="group flex h-72 w-72 items-center justify-center rounded-[4rem] bg-white shadow-2xl ring-4 ring-border/50 transition-all duration-500 hover:rotate-6 hover:scale-110">
-            <img src={appLogo} alt="AEROCHECK Logo" className="h-56 w-56 object-contain" />
+            <img src={appLogo} alt="ATCOCLICLE Logo" className="h-56 w-56 object-contain" />
           </div>
-          <h1 className="text-5xl font-black tracking-tighter text-foreground drop-shadow-lg">AEROCHECK</h1>
-          <p className="text-xl text-muted-foreground font-medium">Gestion des Licences Aeroportuaires</p>
+          <h1 className="text-5xl font-black tracking-tighter text-foreground drop-shadow-lg">ATCOCLICLE</h1>
+          <p className="text-xl text-muted-foreground font-medium">ATCO Licence Validity Monitor</p>
           <div className="mt-8 text-center text-sm text-muted-foreground max-w-md">
-            <p className="mb-4">Plateforme de gestion des licences d'accès aéroportuaire pour l'ASECNA</p>
+            <p className="mb-4">Plateforme de gestions des licenses des controleurs aeriens de l'ASECNA</p>
             <div className="flex gap-4 justify-center">
-              <span className="px-3 py-1 bg-primary/10 rounded-full text-xs">Sécurisé</span>
-              <span className="px-3 py-1 bg-primary/10 rounded-full text-xs">Rapide</span>
-              <span className="px-3 py-1 bg-primary/10 rounded-full text-xs">Fiable</span>
+              <span className="px-3 py-1 bg-primary/10 rounded-full text-xs">Securite</span>
+              <span className="px-3 py-1 bg-primary/10 rounded-full text-xs">Fiabilite</span>
+              <span className="px-3 py-1 bg-primary/10 rounded-full text-xs">Tracabilite</span>
+              <span className="px-3 py-1 bg-primary/10 rounded-full text-xs">Efficacite</span>
             </div>
           </div>
         </div>
@@ -83,15 +114,15 @@ export default function RegisterPage() {
           {/* Mobile logo (visible only on small screens) */}
           <div className="lg:hidden flex flex-col items-center gap-3 mb-8">
             <div className="group flex h-24 w-24 items-center justify-center rounded-[2rem] bg-white shadow-xl ring-2 ring-border/50">
-              <img src={appLogo} alt="AEROCHECK Logo" className="h-16 w-16 object-contain" />
+              <img src={appLogo} alt="ATCOCLICLE Logo" className="h-16 w-16 object-contain" />
             </div>
-            <h1 className="text-3xl font-black tracking-tighter">AEROCHECK</h1>
+            <h1 className="text-3xl font-black tracking-tighter">ATCOCLICLE</h1>
           </div>
 
           <CardHeader className="space-y-1 text-center lg:text-left">
             <CardTitle className="text-2xl">Inscription</CardTitle>
             <CardDescription>
-              Creez votre compte agent aeroportuaire
+              Creez votre compte controleur aerien
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -156,6 +187,143 @@ export default function RegisterPage() {
                     onChange={handleChange}
                     className="pl-10 bg-white/80 backdrop-blur"
                   />
+                </div>
+              </div>
+
+              {/* ATCO-specific fields */}
+              <div className="border-t border-border/50 pt-4 mt-4">
+                <p className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
+                  <Briefcase className="h-4 w-4" />
+                  Informations professionnelles ATCO
+                </p>
+
+                <div className="space-y-2 mb-4">
+                  <Label htmlFor="matricule">Matricule *</Label>
+                  <div className="relative">
+                    <Briefcase className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="matricule"
+                      name="matricule"
+                      placeholder="Ex: ATCO-2024-001"
+                      value={formData.matricule}
+                      onChange={handleChange}
+                      className="pl-10 bg-white/80 backdrop-blur"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="dateNaissance">Date de naissance</Label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        id="dateNaissance"
+                        name="dateNaissance"
+                        type="date"
+                        value={formData.dateNaissance}
+                        onChange={handleChange}
+                        className="pl-10 bg-white/80 backdrop-blur"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="sexe">Sexe</Label>
+                    <Select
+                      value={formData.sexe}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, sexe: value }))}
+                    >
+                      <SelectTrigger className="bg-white/80 backdrop-blur">
+                        <SelectValue placeholder="Selectionner" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="M">Masculin</SelectItem>
+                        <SelectItem value="F">Feminin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="paysId">Pays d&apos;affectation *</Label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground z-10" />
+                      <Input
+                        id="paysId"
+                        name="paysId"
+                        placeholder="ID Pays (ex: cm500...)"
+                        value={formData.paysId}
+                        onChange={handleChange}
+                        className="pl-10 bg-white/80 backdrop-blur"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="aeroportId">Aeroport *</Label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground z-10" />
+                      <Input
+                        id="aeroportId"
+                        name="aeroportId"
+                        placeholder="ID Aeroport (ex: cm500...)"
+                        value={formData.aeroportId}
+                        onChange={handleChange}
+                        className="pl-10 bg-white/80 backdrop-blur"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2 mb-4">
+                  <Label htmlFor="whatsapp">WhatsApp</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="whatsapp"
+                      name="whatsapp"
+                      type="tel"
+                      placeholder="+221 77 123 4567"
+                      value={formData.whatsapp}
+                      onChange={handleChange}
+                      className="pl-10 bg-white/80 backdrop-blur"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="qualifications">Qualifications</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {QUALIFICATIONS_OPTIONS.map((qual) => (
+                      <label
+                        key={qual}
+                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm cursor-pointer transition-colors ${
+                          formData.qualifications.includes(qual)
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted hover:bg-muted/80'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          className="sr-only"
+                          checked={formData.qualifications.includes(qual)}
+                          onChange={() => {
+                            setFormData(prev => ({
+                              ...prev,
+                              qualifications: prev.qualifications.includes(qual)
+                                ? prev.qualifications.filter(q => q !== qual)
+                                : [...prev.qualifications, qual]
+                            }));
+                          }}
+                        />
+                        <GraduationCap className="h-3 w-3" />
+                        {qual}
+                      </label>
+                    ))}
+                  </div>
                 </div>
               </div>
 

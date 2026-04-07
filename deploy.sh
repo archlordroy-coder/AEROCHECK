@@ -48,7 +48,7 @@ log_info "Démarrage du déploiement AEROCHECK - Environnement: $ENVIRONMENT"
 log_info "Création des répertoires..."
 mkdir -p "$LOG_DIR"
 mkdir -p "$BACKUP_DIR"
-chown -R www-data:www-data "$LOG_DIR"
+chown -R root:root "$LOG_DIR"
 
 # 2. Sauvegarde de la base de données (si elle existe)
 if [ -f "$PROJECT_DIR/backend/prisma/dev.db" ]; then
@@ -94,12 +94,12 @@ log_success "Base de données SQLite prête"
 
 # 9. Créer le répertoire uploads s'il n'existe pas
 mkdir -p "$PROJECT_DIR/backend/uploads"
-chown -R www-data:www-data "$PROJECT_DIR/backend/uploads"
+chown -R root:root "$PROJECT_DIR/backend/uploads"
 chmod 755 "$PROJECT_DIR/backend/uploads"
 
 # 10. Configuration des permissions
 log_info "Configuration des permissions..."
-chown -R www-data:www-data "$PROJECT_DIR"
+chown -R root:root "$PROJECT_DIR"
 find "$PROJECT_DIR" -type f -exec chmod 644 {} \;
 find "$PROJECT_DIR" -type d -exec chmod 755 {} \;
 chmod +x "$PROJECT_DIR/backend/dist/backend/src/index.js"
@@ -128,7 +128,7 @@ pm2 save
 
 # 12. Configuration du démarrage automatique PM2
 log_info "Configuration du démarrage automatique..."
-pm2 startup systemd -u www-data --hp /var/www 2>/dev/null || true
+pm2 startup systemd -u root --hp /var/www 2>/dev/null || true
 
 # 13. Vérification de la santé
 timeout=30
@@ -136,15 +136,15 @@ log_info "Vérification de la santé (timeout: ${timeout}s)..."
 sleep 3
 
 # Récupérer le port depuis le .env (PORT ou API_PORT)
-APP_PORT="3501"
-FRONT_PORT="3502"
+APP_PORT="3009"
+FRONT_PORT="3300"
 if [ -f "$PROJECT_DIR/.env" ]; then
     # shellcheck disable=SC1091
     set -a
     . "$PROJECT_DIR/.env"
     set +a
-    APP_PORT=${PORT:-${API_PORT:-3501}}
-    FRONT_PORT=${FRONTEND_PORT:-3502}
+    APP_PORT=${PORT:-${API_PORT:-3009}}
+    FRONT_PORT=${FRONTEND_PORT:-3300}
 fi
 HEALTH_URL="http://localhost:$APP_PORT/api/health"
 

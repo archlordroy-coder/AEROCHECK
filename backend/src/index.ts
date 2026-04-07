@@ -25,7 +25,7 @@ const envPath = path.resolve(__dirname, '../../.env');
 dotenv.config({ path: envPath });
 
 const app = express();
-const PORT = process.env.PORT || 3501;
+const PORT = process.env.PORT || 3009;
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(process.cwd(), 'uploads');
@@ -36,7 +36,7 @@ if (!fs.existsSync(uploadsDir)) {
 // CORS configuration
 const corsOrigins = process.env.CORS_ORIGINS 
   ? process.env.CORS_ORIGINS.split(',') 
-  : ['http://localhost:3502', 'http://127.0.0.1:3502'];
+  : ['http://localhost:3300', 'http://127.0.0.1:3300'];
 
 app.use(cors({
   origin: corsOrigins,

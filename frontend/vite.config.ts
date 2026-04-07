@@ -5,14 +5,14 @@ import path from "node:path";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const rootEnv = loadEnv(mode, path.resolve(__dirname, ".."), "");
-  const backendPort = rootEnv.PORT || rootEnv.API_PORT || "3501";
+  const backendPort = rootEnv.PORT || rootEnv.API_PORT || "3009";
   const backendBaseUrl =
     rootEnv.API_BASE_URL || `http://127.0.0.1:${backendPort}`;
 
   return {
     server: {
       host: "0.0.0.0",
-      port: Number(rootEnv.FRONTEND_PORT || "3502"),
+      port: Number(rootEnv.FRONTEND_PORT || "3300"),
       proxy: {
         "/api": {
           target: backendBaseUrl,

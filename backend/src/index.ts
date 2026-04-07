@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
 import authRoutes from './routes/auth.js';
 import agentRoutes from './routes/agents.js';
@@ -15,6 +17,12 @@ import referencesRoutes from './routes/references.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { startNotificationScheduler } from './services/notifications.js';
 
+// Charger les variables d'environnement depuis le .env racine
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const envPath = path.resolve(__dirname, '../../.env');
+dotenv.config({ path: envPath });
+
 export const prisma = new PrismaClient();
 
 const app = express();
@@ -26,9 +34,13 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Middleware
+// CORS configuration
+const corsOrigins = process.env.CORS_ORIGINS 
+  ? process.env.CORS_ORIGINS.split(',') 
+  : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:8080'];
+
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:8080'],
+  origin: corsOrigins,
   credentials: true
 }));
 app.use(express.json());
@@ -60,7 +72,8 @@ const isVercelDeployment = process.env.VERCEL === '1' || process.env.VERCEL_ENV 
 
 if (!isVercelDeployment) {
   app.listen(PORT, () => {
-    console.log(`[AEROCHECK] Backend running on http://localhost:${PORT}`);
+    console.log(`[AEROCHECK] Backend running on port ${PORT}`);
+    console.log(`[AEROCHECK] CORS origins: ${corsOrigins.join(', ')}`);
     
     // Démarrer le planificateur de notifications
     startNotificationScheduler();

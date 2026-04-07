@@ -262,43 +262,90 @@ export default function DocumentVerify() {
                     </>
                   )}
                 </Button>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Historique</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {document.validations.map((validation) => (
-                    <div key={validation.id} className="flex items-start gap-3">
-                      {validation.status === 'VALIDE' ? (
-                        <CheckCircle className="mt-0.5 h-4 w-4 text-green-600" />
-                      ) : validation.status === 'REJETE' ? (
-                        <XCircle className="mt-0.5 h-4 w-4 text-red-600" />
-                      ) : (
-                        <Clock className="mt-0.5 h-4 w-4 text-yellow-600" />
-                      )}
-                      <div className="flex-1">
-                        <p className="text-sm">
-                          <span className="font-medium">
-                            {validation.validator?.firstName} {validation.validator?.lastName}
-                          </span>
-                          <span className="text-muted-foreground"> - {validation.status}</span>
-                        </p>
-                        {validation.comment && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {validation.comment}
-                          </p>
-                        )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Historique Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Historique</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {document.validations.map((validation) => (
+                  <div key={validation.id} className="flex items-start gap-3">
+                    {validation.status === 'VALIDE' ? (
+                      <CheckCircle className="mt-0.5 h-4 w-4 text-green-600" />
+                    ) : validation.status === 'REJETE' ? (
+                      <XCircle className="mt-0.5 h-4 w-4 text-red-600" />
+                    ) : (
+                      <Clock className="mt-0.5 h-4 w-4 text-yellow-600" />
+                    )}
+                    <div className="flex-1">
+                      <p className="text-sm">
+                        <span className="font-medium">
+                          {validation.validator?.firstName} {validation.validator?.lastName}
+                        </span>
+                        <span className="text-muted-foreground"> - {validation.status}</span>
+                      </p>
+                      {validation.comment && (
                         <p className="text-xs text-muted-foreground mt-1">
-                          {format(new Date(validation.createdAt), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                          {validation.comment}
                         </p>
-                      </div>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {format(new Date(validation.createdAt), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                      </p>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Agent info */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Informations agent
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Nom complet</p>
+                <p className="font-medium">
+                  {document.agent?.user?.firstName} {document.agent?.user?.lastName}
+                </p>
+              </div>
+              
+              <Separator />
+              
+              <div>
+                <p className="text-sm text-muted-foreground">Matricule</p>
+                <p className="font-mono font-medium">{document.agent?.matricule}</p>
+              </div>
+              
+              <Separator />
+              
+              <div>
+                <p className="text-sm text-muted-foreground">Statut actuel</p>
+                <Badge className="mt-1">
+                  {AGENT_STATUS_LABELS[document.agent?.status as keyof typeof AGENT_STATUS_LABELS] || document.agent?.status}
+                </Badge>
+              </div>
+              
+              <Separator />
+              
+              <div>
+                <p className="text-sm text-muted-foreground">Aeroport</p>
+                <p className="text-sm">{document.agent?.aeroport?.nom || document.agent?.aeroportId}</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

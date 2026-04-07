@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { agentsApi, documentsApi, statsApi } from '@/lib/api';
+import { agentsApi, documentsApi, statsApi, referencesApi } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Table, 
   TableBody, 
@@ -22,15 +26,35 @@ import {
   ArrowRight,
   Users,
   Eye,
-  CheckSquare
+  CheckSquare,
+  Filter,
+  MapPin,
+  FileText,
+  Award
 } from 'lucide-react';
-import { DOCUMENT_TYPE_LABELS, AGENT_STATUS_LABELS } from '@shared/types';
-import type { Document } from '@shared/types';
+import { DOCUMENT_TYPE_LABELS, AGENT_STATUS_LABELS, DOC_STATUS_LABELS } from '@shared/types';
+import type { Document, Agent } from '@shared/types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
+interface Pays {
+  id: string;
+  code: string;
+  nom: string;
+  nomFr: string;
+}
+
+interface Aeroport {
+  id: string;
+  code: string;
+  nom: string;
+  ville: string;
+  paysId: string;
+}
+
 export default function QIPDashboard() {
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [allDocuments, setAllDocuments] = useState<Document[]>([]);
   const [agents, setAgents] = useState<Array<{
     id: string;
     matricule: string;
@@ -46,32 +70,50 @@ export default function QIPDashboard() {
       rejected: number;
     };
   }>>([]);
+  const [pays, setPays] = useState<Pays[]>([]);
+  const [aeroports, setAeroports] = useState<Aeroport[]>([]);
+  const [selectedPays, setSelectedPays] = useState<string>('');
+  const [selectedAeroport, setSelectedAeroport] = useState<string>('');
   const [stats, setStats] = useState<{
     documentsEnAttente: number;
     totalDocuments: number;
+    documentsValides: number;
+    documentsRejetes: number;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('pending');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [docsRes, agentsRes, statsRes] = await Promise.all([
+        const [docsRes, agentsRes, statsRes, paysRes, aeroportsRes] = await Promise.all([
           documentsApi.list({ status: 'EN_ATTENTE', limit: 20 }),
           agentsApi.getWithDocStats(),
-          statsApi.overview()
+          statsApi.overview(),
+          referencesApi.pays(),
+          referencesApi.aeroports()
         ]);
         
         setDocuments(docsRes.data);
+        setAllDocuments(docsRes.data);
         if (agentsRes.success && agentsRes.data) {
           setAgents(agentsRes.data);
         }
         if (statsRes.success && statsRes.data) {
           setStats({
             documentsEnAttente: statsRes.data.documentsEnAttente,
-            totalDocuments: statsRes.data.totalDocuments || docsRes.total
+            totalDocuments: statsRes.data.totalDocuments || docsRes.total,
+            documentsValides: statsRes.data.qipValides || 0,
+            documentsRejetes: 0
           });
+        }
+        if (paysRes.success && paysRes.data) {
+          setPays(paysRes.data);
+        }
+        if (aeroportsRes.success && aeroportsRes.data) {
+          setAeroports(aeroportsRes.data);
         }
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -212,86 +254,193 @@ export default function QIPDashboard() {
         </Card>
       )}
 
-      {/* Documents table */}
+      {/* Filters */}
       <Card>
-        <CardHeader>
-          <CardTitle>Documents en attente de verification</CardTitle>
-          <CardDescription>
-            Cliquez sur un document pour le verifier
-          </CardDescription>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Filter className="h-4 w-4" />
+            Filtres
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          {documents.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <CheckCircle className="mb-4 h-12 w-12 text-green-600" />
-              <h3 className="text-lg font-medium">Aucun document en attente</h3>
-              <p className="text-sm text-muted-foreground">
-                Tous les documents ont ete traites
-              </p>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Pays</Label>
+              <Select value={selectedPays} onValueChange={setSelectedPays}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Tous les pays" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Tous les pays</SelectItem>
+                  {pays.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.nomFr}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Agent</TableHead>
-                  <TableHead>Type de document</TableHead>
-                  <TableHead>Date de soumission</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {documents.map((doc) => (
-                  <TableRow key={doc.id}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">
-                          {doc.agent?.user?.firstName} {doc.agent?.user?.lastName}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {doc.agent?.matricule}
-                        </p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {DOCUMENT_TYPE_LABELS[doc.type as keyof typeof DOCUMENT_TYPE_LABELS]}
-                    </TableCell>
-                    <TableCell>
-                      {format(new Date(doc.createdAt), 'dd MMM yyyy', { locale: fr })}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
-                        En attente
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => {
-                            setSelectedDoc(doc);
-                            setIsPreviewOpen(true);
-                          }}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          Aperçu
-                        </Button>
-                        <Button asChild size="sm">
-                          <Link to={`/qip/verify/${doc.id}`}>
-                            Vérifier
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                          </Link>
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Aeroport</Label>
+              <Select 
+                value={selectedAeroport} 
+                onValueChange={setSelectedAeroport}
+                disabled={!selectedPays}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={selectedPays ? "Tous les aeroports" : "Selectionnez d'abord un pays"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Tous les aeroports</SelectItem>
+                  {aeroports
+                    .filter(a => !selectedPays || a.paysId === selectedPays)
+                    .map((a) => (
+                      <SelectItem key={a.id} value={a.id}>{a.nom} ({a.ville})</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardContent>
       </Card>
+
+      {/* Tabs for Documents */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="pending">
+            <Clock className="h-4 w-4 mr-2" />
+            En attente ({documents.length})
+          </TabsTrigger>
+          <TabsTrigger value="validated">
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Validés
+          </TabsTrigger>
+          <TabsTrigger value="rejected">
+            <XCircle className="h-4 w-4 mr-2" />
+            Rejetés
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="pending" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Documents en attente de verification</CardTitle>
+              <CardDescription>
+                Cliquez sur un document pour le verifier
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {documents.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <CheckCircle className="mb-4 h-12 w-12 text-green-600" />
+                  <h3 className="text-lg font-medium">Aucun document en attente</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Tous les documents ont ete traites
+                  </p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Agent</TableHead>
+                      <TableHead>Type de document</TableHead>
+                      <TableHead>Date de soumission</TableHead>
+                      <TableHead>Statut</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {documents.map((doc) => (
+                      <TableRow key={doc.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">
+                              {doc.agent?.user?.firstName} {doc.agent?.user?.lastName}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {doc.agent?.matricule}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {DOCUMENT_TYPE_LABELS[doc.type as keyof typeof DOCUMENT_TYPE_LABELS]}
+                        </TableCell>
+                        <TableCell>
+                          {format(new Date(doc.createdAt), 'dd MMM yyyy', { locale: fr })}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
+                            En attente
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => {
+                                setSelectedDoc(doc);
+                                setIsPreviewOpen(true);
+                              }}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              Aperçu
+                            </Button>
+                            <Button asChild size="sm">
+                              <Link to={`/qip/verify/${doc.id}`}>
+                                Vérifier
+                                <ArrowRight className="ml-2 h-4 w-4" />
+                              </Link>
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="validated" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Documents validés</CardTitle>
+              <CardDescription>
+                Documents deja verifies et approuves
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <FileText className="mb-4 h-12 w-12 text-green-600" />
+                <h3 className="text-lg font-medium">Historique des validations</h3>
+                <p className="text-sm text-muted-foreground">
+                  Les documents validés apparaissent ici
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="rejected" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Documents rejetés</CardTitle>
+              <CardDescription>
+                Documents refuses avec motif
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <XCircle className="mb-4 h-12 w-12 text-red-600" />
+                <h3 className="text-lg font-medium">Historique des rejets</h3>
+                <p className="text-sm text-muted-foreground">
+                  Les documents rejetes apparaissent ici
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Document Preview Modal */}
       <DocumentPreview

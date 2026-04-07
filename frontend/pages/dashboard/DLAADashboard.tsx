@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { agentsApi, licensesApi, statsApi } from '@/lib/api';
+import { agentsApi, licensesApi, statsApi, referencesApi } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { 
   Table, 
@@ -20,12 +24,31 @@ import {
   ArrowRight,
   Users,
   CheckSquare,
-  FileCheck
+  FileCheck,
+  Filter,
+  Clock,
+  FileText,
+  XCircle
 } from 'lucide-react';
-import { AGENT_STATUS_LABELS, COUNTRY_LABELS } from '@shared/types';
+import { AGENT_STATUS_LABELS, LICENSE_STATUS_LABELS } from '@shared/types';
 import type { Agent, License } from '@shared/types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+
+interface Pays {
+  id: string;
+  code: string;
+  nom: string;
+  nomFr: string;
+}
+
+interface Aeroport {
+  id: string;
+  code: string;
+  nom: string;
+  ville: string;
+  paysId: string;
+}
 
 export default function DLAADashboard() {
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -45,20 +68,29 @@ export default function DLAADashboard() {
     };
   }>>([]);
   const [licenses, setLicenses] = useState<License[]>([]);
+  const [pendingLicenses, setPendingLicenses] = useState<License[]>([]);
+  const [pays, setPays] = useState<Pays[]>([]);
+  const [aeroports, setAeroports] = useState<Aeroport[]>([]);
+  const [selectedPays, setSelectedPays] = useState<string>('');
+  const [selectedAeroport, setSelectedAeroport] = useState<string>('');
   const [stats, setStats] = useState<{
     qipValides: number;
     licencesActives: number;
+    licencesExpirees: number;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('pending');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [agentsRes, agentsStatsRes, licensesRes, statsRes] = await Promise.all([
+        const [agentsRes, agentsStatsRes, licensesRes, statsRes, paysRes, aeroportsRes] = await Promise.all([
           agentsApi.list({ status: 'QIP_VALIDE', limit: 20 }),
           agentsApi.getWithDocStats(),
           licensesApi.list({ limit: 10 }),
-          statsApi.overview()
+          statsApi.overview(),
+          referencesApi.pays(),
+          referencesApi.aeroports()
         ]);
         
         setAgents(agentsRes.data);
@@ -69,8 +101,15 @@ export default function DLAADashboard() {
         if (statsRes.success && statsRes.data) {
           setStats({
             qipValides: statsRes.data.agentsParStatus?.QIP_VALIDE || agentsRes.total,
-            licencesActives: statsRes.data.licencesActives
+            licencesActives: statsRes.data.licencesActives,
+            licencesExpirees: statsRes.data.licencesExpirees || 0
           });
+        }
+        if (paysRes.success && paysRes.data) {
+          setPays(paysRes.data);
+        }
+        if (aeroportsRes.success && aeroportsRes.data) {
+          setAeroports(aeroportsRes.data);
         }
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -149,188 +188,250 @@ export default function DLAADashboard() {
         </Card>
       </div>
 
-      {/* Agents Card with Document Stats */}
-      {agentsWithStats.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileCheck className="h-5 w-5" />
-              Agents et Documents Validés
-            </CardTitle>
-            <CardDescription>
-              Liste des agents de votre aéroport avec le nombre de documents validés
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {agentsWithStats.map((agent) => {
-                const progress = agent.documentStats.total > 0 
-                  ? (agent.documentStats.validated / agent.documentStats.total) * 100 
-                  : 0;
-                return (
-                  <div key={agent.id} className="border rounded-lg p-4 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-medium">
-                          {agent.firstName} {agent.lastName}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
+      {/* Filters */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Filter className="h-4 w-4" />
+            Filtres par zone geographique
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Pays</Label>
+              <Select value={selectedPays} onValueChange={setSelectedPays}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Tous les pays" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Tous les pays</SelectItem>
+                  {pays.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.nomFr}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Aeroport</Label>
+              <Select 
+                value={selectedAeroport} 
+                onValueChange={setSelectedAeroport}
+                disabled={!selectedPays}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={selectedPays ? "Tous les aeroports" : "Selectionnez d'abord un pays"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Tous les aeroports</SelectItem>
+                  {aeroports
+                    .filter(a => !selectedPays || a.paysId === selectedPays)
+                    .map((a) => (
+                      <SelectItem key={a.id} value={a.id}>{a.nom} ({a.ville})</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Tabs for Licenses */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="pending">
+            <Clock className="h-4 w-4 mr-2" />
+            En attente d&apos;emission ({agents.length})
+          </TabsTrigger>
+          <TabsTrigger value="issued">
+            <Award className="h-4 w-4 mr-2" />
+            Licences emises ({licenses.length})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="pending" className="mt-6 space-y-6">
+          {/* Agents Card with Document Stats */}
+          {agentsWithStats.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileCheck className="h-5 w-5" />
+                  Agents et Documents Validés
+                </CardTitle>
+                <CardDescription>
+                  Liste des agents avec le nombre de documents validés
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {agentsWithStats.map((agent) => {
+                    const progress = agent.documentStats.total > 0 
+                      ? (agent.documentStats.validated / agent.documentStats.total) * 100 
+                      : 0;
+                    return (
+                      <div key={agent.id} className="border rounded-lg p-4 space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="font-medium">
+                              {agent.firstName} {agent.lastName}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {agent.matricule}
+                            </p>
+                          </div>
+                          <Badge variant="outline" className="text-xs">
+                            {AGENT_STATUS_LABELS[agent.status as keyof typeof AGENT_STATUS_LABELS] || agent.status}
+                          </Badge>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Documents</span>
+                            <span className="font-medium">
+                              {agent.documentStats.validated}/{agent.documentStats.total} validés
+                            </span>
+                          </div>
+                          <Progress value={progress} className="h-2" />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Agents ready for license */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Agents prets pour emission de licence</CardTitle>
+              <CardDescription>
+                Ces agents ont passe la verification QIP
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {agents.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Users className="mb-4 h-12 w-12 text-muted-foreground" />
+                  <h3 className="text-lg font-medium">Aucun agent en attente</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Tous les agents QIP valides ont recu leur licence
+                  </p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Agent</TableHead>
+                      <TableHead>Matricule</TableHead>
+                      <TableHead>Aeroport</TableHead>
+                      <TableHead>Statut</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {agents.map((agent) => (
+                      <TableRow key={agent.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">
+                              {agent.user?.firstName} {agent.user?.lastName}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {agent.fonction}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono">
                           {agent.matricule}
-                        </p>
-                      </div>
-                      <Badge variant="outline" className="text-xs">
-                        {AGENT_STATUS_LABELS[agent.status as keyof typeof AGENT_STATUS_LABELS] || agent.status}
-                      </Badge>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Documents</span>
-                        <span className="font-medium">
-                          {agent.documentStats.validated}/{agent.documentStats.total} validés
-                        </span>
-                      </div>
-                      <Progress value={progress} className="h-2" />
-                      <div className="flex gap-2 text-xs">
-                        {agent.documentStats.pending > 0 && (
-                          <Badge className="bg-yellow-500/10 text-yellow-600">
-                            {agent.documentStats.pending} en attente
+                        </TableCell>
+                        <TableCell>
+                          {agent.aeroport?.nom || agent.aeroportId}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+                            {AGENT_STATUS_LABELS[agent.status as keyof typeof AGENT_STATUS_LABELS]}
                           </Badge>
-                        )}
-                        {agent.documentStats.rejected > 0 && (
-                          <Badge className="bg-red-500/10 text-red-600">
-                            {agent.documentStats.rejected} rejetés
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button asChild size="sm">
+                            <Link to={`/dlaa/issue/${agent.id}`}>
+                              Emettre licence
+                              <ArrowRight className="ml-2 h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="issued" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Licences emises</CardTitle>
+              <CardDescription>
+                Historique des licences delivrees
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {licenses.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Award className="mb-4 h-12 w-12 text-muted-foreground" />
+                  <h3 className="text-lg font-medium">Aucune licence emise</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Les licences emises apparaitront ici
+                  </p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Numero</TableHead>
+                      <TableHead>Agent</TableHead>
+                      <TableHead>Date emission</TableHead>
+                      <TableHead>Expiration</TableHead>
+                      <TableHead>Statut</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {licenses.map((license) => (
+                      <TableRow key={license.id}>
+                        <TableCell className="font-mono text-sm">
+                          {license.numero}
+                        </TableCell>
+                        <TableCell>
+                          {license.agent?.user?.firstName} {license.agent?.user?.lastName}
+                        </TableCell>
+                        <TableCell>
+                          {format(new Date(license.dateEmission), 'dd/MM/yyyy', { locale: fr })}
+                        </TableCell>
+                        <TableCell>
+                          {format(new Date(license.dateExpiration), 'dd/MM/yyyy', { locale: fr })}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={
+                            license.status === 'ACTIVE' 
+                              ? 'bg-green-500/10 text-green-600 border-green-500/20'
+                              : license.status === 'EXPIREE'
+                              ? 'bg-red-500/10 text-red-600 border-red-500/20'
+                              : 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20'
+                          }>
+                            {LICENSE_STATUS_LABELS[license.status as keyof typeof LICENSE_STATUS_LABELS] || license.status}
                           </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Agents ready for license */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Agents prets pour emission de licence</CardTitle>
-          <CardDescription>
-            Ces agents ont passe la verification QIP
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {agents.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Users className="mb-4 h-12 w-12 text-muted-foreground" />
-              <h3 className="text-lg font-medium">Aucun agent en attente</h3>
-              <p className="text-sm text-muted-foreground">
-                Tous les agents QIP valides ont recu leur licence
-              </p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Agent</TableHead>
-                  <TableHead>Matricule</TableHead>
-                  <TableHead>Aeroport</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {agents.map((agent) => (
-                  <TableRow key={agent.id}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">
-                          {agent.user?.firstName} {agent.user?.lastName}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {agent.fonction}
-                        </p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-mono">
-                      {agent.matricule}
-                    </TableCell>
-                    <TableCell>
-                      {agent.aeroport?.nom || agent.aeroportId}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
-                        {AGENT_STATUS_LABELS[agent.status as keyof typeof AGENT_STATUS_LABELS]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button asChild size="sm">
-                        <Link to={`/dlaa/issue/${agent.id}`}>
-                          Emettre licence
-                          <ArrowRight className="ml-2 h-4 w-4" />
-                        </Link>
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Recent licenses */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Licences recemment emises</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {licenses.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">
-              Aucune licence emise
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Numero</TableHead>
-                  <TableHead>Agent</TableHead>
-                  <TableHead>Date emission</TableHead>
-                  <TableHead>Expiration</TableHead>
-                  <TableHead>Statut</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {licenses.slice(0, 5).map((license) => (
-                  <TableRow key={license.id}>
-                    <TableCell className="font-mono text-sm">
-                      {license.numero}
-                    </TableCell>
-                    <TableCell>
-                      {license.agent?.user?.firstName} {license.agent?.user?.lastName}
-                    </TableCell>
-                    <TableCell>
-                      {format(new Date(license.dateEmission), 'dd/MM/yyyy', { locale: fr })}
-                    </TableCell>
-                    <TableCell>
-                      {format(new Date(license.dateExpiration), 'dd/MM/yyyy', { locale: fr })}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={
-                        license.status === 'ACTIVE' 
-                          ? 'bg-green-500/10 text-green-600 border-green-500/20'
-                          : 'bg-red-500/10 text-red-600 border-red-500/20'
-                      }>
-                        {license.status}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

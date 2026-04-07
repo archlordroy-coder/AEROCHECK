@@ -134,7 +134,7 @@ export default function AgentDashboard() {
           </CardHeader>
           <CardContent>
             <Button asChild>
-              <Link to="/profile">
+              <Link to="/app/profile">
                 Completer mon profil
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
@@ -235,7 +235,7 @@ export default function AgentDashboard() {
               </div>
               {documents.length < 6 && (
                 <Button asChild size="sm">
-                  <Link to="/documents/submit">
+                  <Link to="/app/documents/submit">
                     <Upload className="mr-2 h-4 w-4" />
                     Soumettre
                   </Link>

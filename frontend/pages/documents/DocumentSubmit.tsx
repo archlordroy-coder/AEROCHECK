@@ -155,7 +155,7 @@ export default function DocumentSubmit() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button onClick={() => navigate('/profile')}>
+          <Button onClick={() => navigate('/app/profile')}>
             Creer mon profil
           </Button>
         </CardContent>

@@ -41,7 +41,7 @@ export default function LicenseIssue() {
       } catch (error) {
         console.error('Error fetching agent:', error);
         toast.error('Agent non trouve');
-        navigate('/dlaa');
+        navigate('/app/dlaa');
       } finally {
         setIsLoading(false);
       }
@@ -63,7 +63,7 @@ export default function LicenseIssue() {
 
       if (response.success) {
         toast.success('Licence emise avec succes');
-        navigate('/dlaa');
+        navigate('/app/dlaa');
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erreur lors de l'emission");
@@ -89,7 +89,7 @@ export default function LicenseIssue() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/dlaa')}>
+        <Button variant="ghost" size="icon" onClick={() => navigate('/app/dlaa')}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>

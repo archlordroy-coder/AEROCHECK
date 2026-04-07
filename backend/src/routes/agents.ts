@@ -19,7 +19,22 @@ const createAgentSchema = z.object({
   zoneAcces: z.array(z.string()).default([])
 });
 
-const updateAgentSchema = createAgentSchema.partial();
+const updateAgentSchema = z.object({
+  matricule: z.string().min(3).optional(),
+  dateNaissance: z.string().optional(),
+  lieuNaissance: z.string().min(2).optional(),
+  nationaliteId: z.string().optional(),
+  adresse: z.string().min(5).optional(),
+  fonction: z.string().min(2).optional(),
+  employeurId: z.string().optional(),
+  paysId: z.string().optional(),
+  aeroportId: z.string().optional(),
+  zoneAcces: z.array(z.string()).default([]).optional(),
+  sexe: z.enum(['M', 'F']).optional(),
+  qualifications: z.array(z.string()).optional(),
+  whatsapp: z.string().optional(),
+  photoUrl: z.string().optional()
+});
 
 // Generate unique matricule
 function generateMatricule(): string {
@@ -325,6 +340,10 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next) =
     if (data.paysId) updateData.paysId = data.paysId;
     if (data.aeroportId) updateData.aeroportId = data.aeroportId;
     if (data.zoneAcces) updateData.zoneAcces = JSON.stringify(data.zoneAcces);
+    if (data.sexe) updateData.sexe = data.sexe;
+    if (data.qualifications) updateData.qualifications = JSON.stringify(data.qualifications);
+    if (data.whatsapp) updateData.whatsapp = data.whatsapp;
+    if (data.photoUrl) updateData.photoUrl = data.photoUrl;
 
     const updated = await prisma.agent.update({
       where: { id: req.params.id },

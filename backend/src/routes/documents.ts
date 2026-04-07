@@ -304,6 +304,14 @@ router.post('/', authenticate, upload.single('file'), async (req: AuthRequest, r
       });
     }
 
+    // Update agent photoUrl if document is a PHOTO_IDENTITE
+    if (data.type === 'PHOTO_IDENTITE') {
+      await prisma.agent.update({
+        where: { id: data.agentId },
+        data: { photoUrl: relativePath }
+      });
+    }
+
     res.status(201).json({ success: true, data: document });
   } catch (error) {
     // Clean up uploaded file on error

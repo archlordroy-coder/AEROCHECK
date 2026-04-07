@@ -273,7 +273,11 @@ export default function AgentProfile() {
                   <div className="relative">
                     <div className="h-32 w-32 rounded-full bg-muted flex items-center justify-center overflow-hidden border-4 border-background shadow-lg">
                       {agent.photoUrl ? (
-                        <img src={agent.photoUrl} alt="Photo" className="h-full w-full object-cover" />
+                        <img 
+                          src={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${agent.photoUrl}`} 
+                          alt="Photo" 
+                          className="h-full w-full object-cover" 
+                        />
                       ) : (
                         <Camera className="h-12 w-12 text-muted-foreground" />
                       )}

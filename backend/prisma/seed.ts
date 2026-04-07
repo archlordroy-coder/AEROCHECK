@@ -100,38 +100,27 @@ async function main() {
   }
   console.log(`✅ Seeded ${employeurs.length} employeurs`);
 
-  // Seed Pays Africains
+  // Seed Pays ASECNA (18 membres : 17 pays africains + France)
   const pays = [
-    { code: 'SN', nom: 'Senegal', nomFr: 'Sénégal' },
-    { code: 'CI', nom: 'Ivory Coast', nomFr: 'Côte d\'Ivoire' },
-    { code: 'ML', nom: 'Mali', nomFr: 'Mali' },
-    { code: 'BF', nom: 'Burkina Faso', nomFr: 'Burkina Faso' },
-    { code: 'NE', nom: 'Niger', nomFr: 'Niger' },
     { code: 'BJ', nom: 'Benin', nomFr: 'Bénin' },
-    { code: 'TG', nom: 'Togo', nomFr: 'Togo' },
-    { code: 'GH', nom: 'Ghana', nomFr: 'Ghana' },
-    { code: 'GN', nom: 'Guinea', nomFr: 'Guinée' },
-    { code: 'GM', nom: 'Gambia', nomFr: 'Gambie' },
-    { code: 'GW', nom: 'Guinea-Bissau', nomFr: 'Guinée-Bissau' },
-    { code: 'MR', nom: 'Mauritania', nomFr: 'Mauritanie' },
-    { code: 'MA', nom: 'Morocco', nomFr: 'Maroc' },
-    { code: 'TN', nom: 'Tunisia', nomFr: 'Tunisie' },
-    { code: 'DZ', nom: 'Algeria', nomFr: 'Algérie' },
-    { code: 'EG', nom: 'Egypt', nomFr: 'Égypte' },
-    { code: 'NG', nom: 'Nigeria', nomFr: 'Nigeria' },
+    { code: 'BF', nom: 'Burkina Faso', nomFr: 'Burkina Faso' },
     { code: 'CM', nom: 'Cameroon', nomFr: 'Cameroun' },
-    { code: 'GA', nom: 'Gabon', nomFr: 'Gabon' },
-    { code: 'CG', nom: 'Congo', nomFr: 'Congo' },
-    { code: 'CD', nom: 'DR Congo', nomFr: 'Congo (RDC)' },
     { code: 'CF', nom: 'Central African Republic', nomFr: 'République Centrafricaine' },
+    { code: 'KM', nom: 'Comoros', nomFr: 'Comores' },
+    { code: 'CG', nom: 'Congo', nomFr: 'Congo' },
+    { code: 'CI', nom: 'Ivory Coast', nomFr: "Côte d'Ivoire" },
+    { code: 'FR', nom: 'France', nomFr: 'France' },
+    { code: 'GA', nom: 'Gabon', nomFr: 'Gabon' },
+    { code: 'GN', nom: 'Guinea', nomFr: 'Guinée' },
+    { code: 'GW', nom: 'Guinea-Bissau', nomFr: 'Guinée-Bissau' },
+    { code: 'GQ', nom: 'Equatorial Guinea', nomFr: 'Guinée Équatoriale' },
+    { code: 'MG', nom: 'Madagascar', nomFr: 'Madagascar' },
+    { code: 'ML', nom: 'Mali', nomFr: 'Mali' },
+    { code: 'MR', nom: 'Mauritania', nomFr: 'Mauritanie' },
+    { code: 'NE', nom: 'Niger', nomFr: 'Niger' },
+    { code: 'SN', nom: 'Senegal', nomFr: 'Sénégal' },
     { code: 'TD', nom: 'Chad', nomFr: 'Tchad' },
-    { code: 'ET', nom: 'Ethiopia', nomFr: 'Éthiopie' },
-    { code: 'KE', nom: 'Kenya', nomFr: 'Kenya' },
-    { code: 'TZ', nom: 'Tanzania', nomFr: 'Tanzanie' },
-    { code: 'UG', nom: 'Uganda', nomFr: 'Ouganda' },
-    { code: 'RW', nom: 'Rwanda', nomFr: 'Rwanda' },
-    { code: 'BI', nom: 'Burundi', nomFr: 'Burundi' },
-    { code: 'ZA', nom: 'South Africa', nomFr: 'Afrique du Sud' },
+    { code: 'TG', nom: 'Togo', nomFr: 'Togo' },
   ];
 
   const paysCreated = [];
@@ -145,7 +134,7 @@ async function main() {
   }
   console.log(`✅ Seeded ${pays.length} pays africains`);
 
-  // Seed Aéroports par pays
+  // Seed Aéroports ASECNA par pays
   const aeroportsData = [
     // Sénégal
     { code: 'DKR', nom: 'Aéroport International Blaise Diagne', ville: 'Dakar', paysCode: 'SN' },
@@ -153,11 +142,6 @@ async function main() {
     { code: 'ZIG', nom: 'Aéroport de Ziguinchor', ville: 'Ziguinchor', paysCode: 'SN' },
     { code: 'KLC', nom: 'Aéroport de Kaolack', ville: 'Kaolack', paysCode: 'SN' },
     { code: 'CSK', nom: 'Aéroport de Cap Skirring', ville: 'Cap Skirring', paysCode: 'SN' },
-    { code: 'KDA', nom: 'Aéroport de Kolda', ville: 'Kolda', paysCode: 'SN' },
-    { code: 'TUD', nom: 'Aéroport de Tambacounda', ville: 'Tambacounda', paysCode: 'SN' },
-    { code: 'POD', nom: 'Aéroport de Podor', ville: 'Podor', paysCode: 'SN' },
-    { code: 'RDT', nom: 'Aéroport de Richard-Toll', ville: 'Richard-Toll', paysCode: 'SN' },
-    { code: 'SMY', nom: 'Aéroport de Simenti', ville: 'Simenti', paysCode: 'SN' },
     
     // Côte d'Ivoire
     { code: 'ABJ', nom: 'Aéroport Félix Houphouët-Boigny', ville: 'Abidjan', paysCode: 'CI' },
@@ -165,11 +149,6 @@ async function main() {
     { code: 'HGO', nom: 'Aéroport de Korhogo', ville: 'Korhogo', paysCode: 'CI' },
     { code: 'SPY', nom: 'Aéroport de San-Pédro', ville: 'San-Pédro', paysCode: 'CI' },
     { code: 'MJC', nom: 'Aéroport de Man', ville: 'Man', paysCode: 'CI' },
-    { code: 'OGO', nom: 'Aéroport d\'Abengourou', ville: 'Abengourou', paysCode: 'CI' },
-    { code: 'GGN', nom: 'Aéroport de Gagnoa', ville: 'Gagnoa', paysCode: 'CI' },
-    { code: 'KEO', nom: 'Aéroport d\'Odienne', ville: 'Odienne', paysCode: 'CI' },
-    { code: 'DIV', nom: 'Aéroport de Divo', ville: 'Divo', paysCode: 'CI' },
-    { code: 'BBV', nom: 'Aéroport de Grand-Béréby', ville: 'Grand-Béréby', paysCode: 'CI' },
     
     // Mali
     { code: 'BKO', nom: 'Aéroport International Modibo Keita', ville: 'Bamako', paysCode: 'ML' },
@@ -177,21 +156,12 @@ async function main() {
     { code: 'MZI', nom: 'Aéroport de Mopti', ville: 'Mopti', paysCode: 'ML' },
     { code: 'TOM', nom: 'Aéroport de Tombouctou', ville: 'Tombouctou', paysCode: 'ML' },
     { code: 'KYS', nom: 'Aéroport de Kayes', ville: 'Kayes', paysCode: 'ML' },
-    { code: 'NRM', nom: 'Aéroport de Nioro', ville: 'Nioro', paysCode: 'ML' },
-    { code: 'SZG', nom: 'Aéroport de Sikasso', ville: 'Sikasso', paysCode: 'ML' },
-    { code: 'KTX', nom: 'Aéroport de Koutiala', ville: 'Koutiala', paysCode: 'ML' },
     
     // Burkina Faso
     { code: 'OUA', nom: 'Aéroport International de Ouagadougou', ville: 'Ouagadougou', paysCode: 'BF' },
     { code: 'BOY', nom: 'Aéroport de Bobo-Dioulasso', ville: 'Bobo-Dioulasso', paysCode: 'BF' },
     { code: 'XGG', nom: 'Aéroport de Gorom-Gorom', ville: 'Gorom-Gorom', paysCode: 'BF' },
     { code: 'XPA', nom: 'Aéroport de Pama', ville: 'Pama', paysCode: 'BF' },
-    { code: 'DGU', nom: 'Aéroport de Dédougou', ville: 'Dédougou', paysCode: 'BF' },
-    { code: 'XAR', nom: 'Aéroport d\'Arly', ville: 'Arly', paysCode: 'BF' },
-    { code: 'TEG', nom: 'Aéroport de Tenkodogo', ville: 'Tenkodogo', paysCode: 'BF' },
-    { code: 'XSE', nom: 'Aéroport de Sebba', ville: 'Sebba', paysCode: 'BF' },
-    { code: 'XNU', nom: 'Aéroport de Nouna', ville: 'Nouna', paysCode: 'BF' },
-    { code: 'XDE', nom: 'Aéroport de Dori', ville: 'Dori', paysCode: 'BF' },
     
     // Niger
     { code: 'NIM', nom: 'Aéroport International Diori Hamani', ville: 'Niamey', paysCode: 'NE' },
@@ -199,33 +169,18 @@ async function main() {
     { code: 'MFQ', nom: 'Aéroport de Maradi', ville: 'Maradi', paysCode: 'NE' },
     { code: 'ZND', nom: 'Aéroport de Zinder', ville: 'Zinder', paysCode: 'NE' },
     { code: 'THZ', nom: 'Aéroport de Tahoua', ville: 'Tahoua', paysCode: 'NE' },
-    { code: 'DOD', nom: 'Aéroport de Dirkou', ville: 'Dirkou', paysCode: 'NE' },
-    { code: 'AQC', nom: 'Aéroport d\'Arlit', ville: 'Arlit', paysCode: 'NE' },
     
     // Bénin
     { code: 'COO', nom: 'Aéroport International de Cotonou', ville: 'Cotonou', paysCode: 'BJ' },
     { code: 'NAE', nom: 'Aéroport de Natitingou', ville: 'Natitingou', paysCode: 'BJ' },
     { code: 'PKO', nom: 'Aéroport de Parakou', ville: 'Parakou', paysCode: 'BJ' },
     { code: 'KDC', nom: 'Aéroport de Kandi', ville: 'Kandi', paysCode: 'BJ' },
-    { code: 'DJA', nom: 'Aéroport de Djougou', ville: 'Djougou', paysCode: 'BJ' },
-    { code: 'SVF', nom: 'Aéroport de Savé', ville: 'Savé', paysCode: 'BJ' },
-    { code: 'BKK', nom: 'Aéroport de Bembéréké', ville: 'Bembéréké', paysCode: 'BJ' },
     
     // Togo
     { code: 'LFW', nom: 'Aéroport International Gnassingbé Eyadéma', ville: 'Lomé', paysCode: 'TG' },
     { code: 'KDX', nom: 'Aéroport de Niamtougou', ville: 'Niamtougou', paysCode: 'TG' },
     { code: 'ANI', nom: 'Aéroport d\'Anié', ville: 'Anié', paysCode: 'TG' },
     { code: 'SOK', nom: 'Aéroport de Sokodé', ville: 'Sokodé', paysCode: 'TG' },
-    { code: 'MPL', nom: 'Aéroport de Mango', ville: 'Mango', paysCode: 'TG' },
-    
-    // Ghana
-    { code: 'ACC', nom: 'Aéroport International Kotoka', ville: 'Accra', paysCode: 'GH' },
-    { code: 'KMS', nom: 'Aéroport de Kumasi', ville: 'Kumasi', paysCode: 'GH' },
-    { code: 'TML', nom: 'Aéroport de Tamale', ville: 'Tamale', paysCode: 'GH' },
-    { code: 'NYI', nom: 'Aéroport de Sunyani', ville: 'Sunyani', paysCode: 'GH' },
-    { code: 'TKD', nom: 'Aéroport de Takoradi', ville: 'Takoradi', paysCode: 'GH' },
-    { code: 'DWD', nom: 'Aéroport de Wa', ville: 'Wa', paysCode: 'GH' },
-    { code: 'HLX', nom: 'Aéroport de Ho', ville: 'Ho', paysCode: 'GH' },
     
     // Guinée
     { code: 'CKY', nom: 'Aéroport International Ahmed Sékou Touré', ville: 'Conakry', paysCode: 'GN' },
@@ -233,10 +188,70 @@ async function main() {
     { code: 'LEK', nom: 'Aéroport de Labé', ville: 'Labé', paysCode: 'GN' },
     { code: 'FIG', nom: 'Aéroport de Fria', ville: 'Fria', paysCode: 'GN' },
     { code: 'NZE', nom: 'Aéroport de Nzérékoré', ville: 'Nzérékoré', paysCode: 'GN' },
-    { code: 'KSI', nom: 'Aéroport de Kissidougou', ville: 'Kissidougou', paysCode: 'GN' },
     
-    // Gambie
-    { code: 'BJL', nom: 'Aéroport International de Banjul', ville: 'Banjul', paysCode: 'GM' },
+    // Guinée-Bissau
+    { code: 'OXB', nom: 'Aéroport International Osvaldo Vieira', ville: 'Bissau', paysCode: 'GW' },
+    { code: 'BQE', nom: 'Aéroport de Bubaque', ville: 'Bubaque', paysCode: 'GW' },
+    
+    // Gabon
+    { code: 'LBV', nom: 'Aéroport International Léon Mba', ville: 'Libreville', paysCode: 'GA' },
+    { code: 'POG', nom: 'Aéroport International Port-Gentil', ville: 'Port-Gentil', paysCode: 'GA' },
+    { code: 'MVB', nom: 'Aéroport de Mouilla Ville', ville: 'Mouila', paysCode: 'GA' },
+    { code: 'MKU', nom: 'Aéroport de Makokou', ville: 'Makokou', paysCode: 'GA' },
+    { code: 'LBQ', nom: 'Aéroport de Lambaréné', ville: 'Lambaréné', paysCode: 'GA' },
+    
+    // Congo
+    { code: 'BZV', nom: 'Aéroport International Maya-Maya', ville: 'Brazzaville', paysCode: 'CG' },
+    { code: 'PNR', nom: 'Aéroport International Agostinho-Neto', ville: 'Pointe-Noire', paysCode: 'CG' },
+    { code: 'DIS', nom: 'Aéroport de Dolisie', ville: 'Dolisie', paysCode: 'CG' },
+    { code: 'OUE', nom: 'Aéroport de Ouesso', ville: 'Ouesso', paysCode: 'CG' },
+    
+    // Cameroun
+    { code: 'DLA', nom: 'Aéroport International de Douala', ville: 'Douala', paysCode: 'CM' },
+    { code: 'NSI', nom: 'Aéroport International de Yaoundé-Nsimalen', ville: 'Yaoundé', paysCode: 'CM' },
+    { code: 'GOU', nom: 'Aéroport de Garoua', ville: 'Garoua', paysCode: 'CM' },
+    { code: 'BPC', nom: 'Aéroport de Bamenda', ville: 'Bamenda', paysCode: 'CM' },
+    { code: 'NKS', nom: 'Aéroport de Nkongsamba', ville: 'Nkongsamba', paysCode: 'CM' },
+    
+    // République Centrafricaine
+    { code: 'BGF', nom: 'Aéroport International Bangui M\'Poko', ville: 'Bangui', paysCode: 'CF' },
+    { code: 'BBY', nom: 'Aéroport de Bambari', ville: 'Bambari', paysCode: 'CF' },
+    { code: 'BSN', nom: 'Aéroport de Bossangoa', ville: 'Bossangoa', paysCode: 'CF' },
+    
+    // Tchad
+    { code: 'NDJ', nom: 'Aéroport International de N\'Djamena', ville: 'N\'Djamena', paysCode: 'TD' },
+    { code: 'MQQ', nom: 'Aéroport de Moundou', ville: 'Moundou', paysCode: 'TD' },
+    { code: 'SRH', nom: 'Aéroport de Sarh', ville: 'Sarh', paysCode: 'TD' },
+    { code: 'AEH', nom: 'Aéroport d\'Abéché', ville: 'Abéché', paysCode: 'TD' },
+    
+    // Comores
+    { code: 'HAH', nom: 'Aéroport International Prince Said Ibrahim', ville: 'Moroni', paysCode: 'KM' },
+    { code: 'NWA', nom: 'Aéroport de Mohéli', ville: 'Mohéli', paysCode: 'KM' },
+    { code: 'AJN', nom: 'Aéroport d\'Anjouan', ville: 'Anjouan', paysCode: 'KM' },
+    
+    // Guinée Équatoriale
+    { code: 'SSG', nom: 'Aéroport International de Malabo', ville: 'Malabo', paysCode: 'GQ' },
+    { code: 'BSG', nom: 'Aéroport de Bata', ville: 'Bata', paysCode: 'GQ' },
+    { code: 'MIC', nom: 'Aéroport de Mongomo', ville: 'Mongomo', paysCode: 'GQ' },
+    
+    // Madagascar
+    { code: 'TNR', nom: 'Aéroport International Ivato', ville: 'Antananarivo', paysCode: 'MG' },
+    { code: 'NOS', nom: 'Aéroport International de Nosy-Be', ville: 'Nosy Be', paysCode: 'MG' },
+    { code: 'TLE', nom: 'Aéroport de Tuléar', ville: 'Tuléar', paysCode: 'MG' },
+    { code: 'MJN', nom: 'Aéroport de Majunga', ville: 'Mahajanga', paysCode: 'MG' },
+    { code: 'DIE', nom: 'Aéroport d\'Antsiranana', ville: 'Antsiranana (Diego-Suarez)', paysCode: 'MG' },
+    
+    // Mauritanie
+    { code: 'NKC', nom: 'Aéroport International de Nouakchott-Oumtounsy', ville: 'Nouakchott', paysCode: 'MR' },
+    { code: 'NDB', nom: 'Aéroport de Nouadhibou', ville: 'Nouadhibou', paysCode: 'MR' },
+    { code: 'AJJ', nom: 'Aéroport d\'Atar', ville: 'Atar', paysCode: 'MR' },
+    { code: 'KFA', nom: 'Aéroport de Kiffa', ville: 'Kiffa', paysCode: 'MR' },
+    
+    // France (pour ASECNA)
+    { code: 'CDG', nom: 'Aéroport de Paris-Charles de Gaulle', ville: 'Paris', paysCode: 'FR' },
+    { code: 'ORY', nom: 'Aéroport de Paris-Orly', ville: 'Paris', paysCode: 'FR' },
+    { code: 'RUN', nom: 'Aéroport de La Réunion Roland Garros', ville: 'Saint-Denis', paysCode: 'FR' },
+    { code: 'FDF', nom: 'Aéroport de Martinique Aimé Césaire', ville: 'Fort-de-France', paysCode: 'FR' },
   ];
 
   // Créer les aéroports avec les IDs de pays

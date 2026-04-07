@@ -200,12 +200,12 @@ export default function DLAADashboard() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground">Pays</Label>
-              <Select value={selectedPays} onValueChange={setSelectedPays}>
+              <Select value={selectedPays || "all"} onValueChange={(v) => setSelectedPays(v === "all" ? "" : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Tous les pays" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tous les pays</SelectItem>
+                  <SelectItem value="all">Tous les pays</SelectItem>
                   {pays.map((p) => (
                     <SelectItem key={p.id} value={p.id}>{p.nomFr}</SelectItem>
                   ))}
@@ -215,15 +215,15 @@ export default function DLAADashboard() {
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground">Aeroport</Label>
               <Select 
-                value={selectedAeroport} 
-                onValueChange={setSelectedAeroport}
+                value={selectedAeroport || "all"} 
+                onValueChange={(v) => setSelectedAeroport(v === "all" ? "" : v)}
                 disabled={!selectedPays}
               >
                 <SelectTrigger>
                   <SelectValue placeholder={selectedPays ? "Tous les aeroports" : "Selectionnez d'abord un pays"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tous les aeroports</SelectItem>
+                  <SelectItem value="all">Tous les aeroports</SelectItem>
                   {aeroports
                     .filter(a => !selectedPays || a.paysId === selectedPays)
                     .map((a) => (

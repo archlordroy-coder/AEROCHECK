@@ -214,6 +214,7 @@ router.post('/', authenticate, upload.single('file'), async (req: AuthRequest, r
     }
 
     // Check if document type already submitted (allow re-submission of REJETE documents)
+    // For PHOTO_IDENTITE, we allow replacement by deleting the old one
     const existing = await prisma.document.findFirst({
       where: {
         agentId: data.agentId,
@@ -223,11 +224,28 @@ router.post('/', authenticate, upload.single('file'), async (req: AuthRequest, r
     });
 
     if (existing) {
-      // Delete uploaded file if document already exists
-      if (req.file) {
-        fs.unlinkSync(req.file.path);
+      // For PHOTO_IDENTITE: delete old photo and replace it
+      if (data.type === 'PHOTO_IDENTITE') {
+        // Delete old file from filesystem if it exists
+        const oldFilePath = path.join(process.cwd(), existing.filePath.startsWith('/') ? existing.filePath.substring(1) : existing.filePath);
+        if (fs.existsSync(oldFilePath)) {
+          try {
+            fs.unlinkSync(oldFilePath);
+          } catch (err) {
+            console.error('Failed to delete old photo file:', err);
+          }
+        }
+        // Delete old document from database
+        await prisma.document.delete({
+          where: { id: existing.id }
+        });
+      } else {
+        // For other document types: reject if already exists
+        if (req.file) {
+          fs.unlinkSync(req.file.path);
+        }
+        throw new AppError('Ce type de document a deja ete soumis', 400);
       }
-      throw new AppError('Ce type de document a deja ete soumis', 400);
     }
 
     // Check for rejected document - if exists, archive it before creating new

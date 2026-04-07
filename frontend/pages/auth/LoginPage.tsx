@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,10 +7,11 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import appLogo from "@/logo/logosansfond.png";
-import { Lock, Mail } from 'lucide-react';
+import { Lock, Mail, ArrowLeft, Home } from 'lucide-react';
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -63,6 +64,18 @@ export default function LoginPage() {
           </div>
 
           <CardHeader className="space-y-1 text-center lg:text-left">
+            <div className="flex items-center gap-2 mb-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="gap-2 -ml-2 text-muted-foreground hover:text-foreground"
+                onClick={() => navigate('/')}
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <Home className="h-4 w-4" />
+                Retour à l&apos;accueil
+              </Button>
+            </div>
             <CardTitle className="text-2xl">Connexion</CardTitle>
             <CardDescription>
               Entrez vos identifiants pour acceder a votre espace

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import appLogo from "@/logo/logosansfond.png";
-import { Lock, Mail, User, Phone, Calendar, MapPin, Briefcase, GraduationCap, Loader2 } from 'lucide-react';
+import { Lock, Mail, User, Phone, Calendar, MapPin, Briefcase, GraduationCap, Loader2, ArrowLeft, Home } from 'lucide-react';
 import { referencesApi } from '@/lib/api';
 
 const QUALIFICATIONS_OPTIONS = [
@@ -20,6 +20,7 @@ const QUALIFICATIONS_OPTIONS = [
 
 export default function RegisterPage() {
   const { register } = useAuth();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   
   // Reference data from API
@@ -163,6 +164,18 @@ export default function RegisterPage() {
           </div>
 
           <CardHeader className="space-y-1 text-center lg:text-left">
+            <div className="flex items-center gap-2 mb-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="gap-2 -ml-2 text-muted-foreground hover:text-foreground"
+                onClick={() => navigate('/')}
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <Home className="h-4 w-4" />
+                Retour à l&apos;accueil
+              </Button>
+            </div>
             <CardTitle className="text-2xl">Inscription</CardTitle>
             <CardDescription>
               Creez votre compte controleur aerien

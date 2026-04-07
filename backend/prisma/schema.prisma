@@ -39,6 +39,9 @@ model Agent {
   nationalite      Nationalite @relation(fields: [nationaliteId], references: [id])
   adresse          String
   fonction         String
+  grade            String?     // STAGIAIRE, CADET, JUNIOR, SENIOR
+  instructeur      Boolean     @default(false)
+  posteAdministratif String?   // CHEF_UNITE_ENF, ENA, QIP, CHARGE_EN_ROUTE, CHARGE_EXPLOITATION_NA, AUCUN
   employeurId      String
   employeur        Employeur   @relation(fields: [employeurId], references: [id])
   paysId           String
@@ -49,6 +52,7 @@ model Agent {
   status           String      @default("EN_ATTENTE")
   sexe             String?     // M or F
   qualifications   String?     // JSON array of qualifications
+  licenseStatus    String?     // VALIDE, EXPIREE, SUSPENDUE
   whatsapp         String?     // WhatsApp number
   photoUrl         String?     // Profile photo URL
   emailVerified    Boolean     @default(false)
@@ -66,7 +70,9 @@ model Document {
   fileName       String
   filePath       String
   status         String       @default("EN_ATTENTE")
+  issuedAt       DateTime?    // Date de delivrance/soumission du document
   expiresAt      DateTime?    // Date d'expiration pour notifications
+  englishLevel   Int?         // Niveau d'anglais (4/5/6) pour NIVEAU_ANGLAIS
   archived       Boolean      @default(false)  // Archivage
   archivedAt     DateTime?
   validations    Validation[]
@@ -164,4 +170,3 @@ model Aeroport {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
-

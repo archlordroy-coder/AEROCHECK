@@ -82,11 +82,10 @@ log_info "Compilation TypeScript..."
 npm run build
 log_success "Build terminé"
 
-# 7. Prisma - Génération du client et migrations
-log_info "Mise à jour de la base de données..."
-npx prisma generate
-npx prisma migrate deploy
-log_success "Base de données mise à jour"
+# 7. Initialisation SQLite (sans Prisma)
+log_info "Initialisation de la base SQLite..."
+npm run db:init
+log_success "Base de données SQLite prête"
 
 # 8. Installation des dépendances frontend (optionnel - si build statique)
 # log_info "Installation des dépendances frontend..."
@@ -137,8 +136,15 @@ timeout=30
 log_info "Vérification de la santé (timeout: ${timeout}s)..."
 sleep 3
 
-# Récupérer le port depuis le .env ou utiliser le port par défaut
-PORT=$(grep -E "^PORT=" "$PROJECT_DIR/.env" | cut -d= -f2 | tr -d '"' || echo "3001")
+# Récupérer le port depuis le .env (PORT ou API_PORT)
+PORT="3001"
+if [ -f "$PROJECT_DIR/.env" ]; then
+    # shellcheck disable=SC1091
+    set -a
+    . "$PROJECT_DIR/.env"
+    set +a
+    PORT=${PORT:-${API_PORT:-3001}}
+fi
 HEALTH_URL="http://localhost:$PORT/api/health"
 
 for i in $(seq 1 $timeout); do

@@ -13,13 +13,11 @@ import { DOCUMENT_TYPE_LABELS, DOC_STATUS_LABELS } from '@shared/types';
 import type { Agent, Document, DocumentType } from '@shared/types';
 
 const DOC_TYPES: DocumentType[] = [
-  'PIECE_IDENTITE',
-  'PHOTO_IDENTITE',
-  'CASIER_JUDICIAIRE',
   'CERTIFICAT_MEDICAL',
-  'ATTESTATION_FORMATION',
-  'CONTRAT_TRAVAIL'
+  'CONTROLE_COMPETENCE',
+  'NIVEAU_ANGLAIS'
 ];
+const LICENSE_DOC_TYPES: DocumentType[] = [...DOC_TYPES, 'JUSTIFICATIF_NOMINATION'];
 
 export default function DocumentSubmit() {
   const navigate = useNavigate();
@@ -29,6 +27,8 @@ export default function DocumentSubmit() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedType, setSelectedType] = useState<DocumentType | ''>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [issuedAt, setIssuedAt] = useState('');
+  const [englishLevel, setEnglishLevel] = useState<'4' | '5' | '6' | ''>('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [fileType, setFileType] = useState<string | null>(null);
 
@@ -55,7 +55,12 @@ export default function DocumentSubmit() {
     const submittedTypes = documents
       .filter(d => d.status !== 'REJETE')
       .map(d => d.type);
-    return DOC_TYPES.filter(t => !submittedTypes.includes(t));
+    const baseTypes = DOC_TYPES.filter(t => !submittedTypes.includes(t));
+    const needJustificatif = Boolean(agent?.instructeur || (agent?.posteAdministratif && agent.posteAdministratif !== 'AUCUN'));
+    if (needJustificatif && !submittedTypes.includes('JUSTIFICATIF_NOMINATION')) {
+      return [...baseTypes, 'JUSTIFICATIF_NOMINATION'];
+    }
+    return baseTypes;
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,8 +81,12 @@ export default function DocumentSubmit() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!agent || !selectedType || !selectedFile) {
+    if (!agent || !selectedType || !selectedFile || !issuedAt) {
       toast.error('Veuillez remplir tous les champs');
+      return;
+    }
+    if (selectedType === 'NIVEAU_ANGLAIS' && !englishLevel) {
+      toast.error('Veuillez renseigner le niveau d\'anglais (4, 5 ou 6)');
       return;
     }
 
@@ -87,6 +96,10 @@ export default function DocumentSubmit() {
       const formData = new FormData();
       formData.append('agentId', agent.id);
       formData.append('type', selectedType);
+      formData.append('issuedAt', issuedAt);
+      if (selectedType === 'NIVEAU_ANGLAIS' && englishLevel) {
+        formData.append('englishLevel', englishLevel);
+      }
       formData.append('file', selectedFile);
 
       await documentsApi.submit(formData);
@@ -100,6 +113,8 @@ export default function DocumentSubmit() {
       // Reset form
       setSelectedType('');
       setSelectedFile(null);
+      setIssuedAt('');
+      setEnglishLevel('');
       if (previewUrl) {
         URL.revokeObjectURL(previewUrl);
         setPreviewUrl(null);
@@ -164,7 +179,8 @@ export default function DocumentSubmit() {
   }
 
   const availableTypes = getAvailableTypes();
-  const progress = (documents.filter(d => d.status !== 'REJETE').length / DOC_TYPES.length) * 100;
+  const requiredDocCount = Boolean(agent.instructeur || (agent.posteAdministratif && agent.posteAdministratif !== 'AUCUN')) ? 4 : 3;
+  const progress = (documents.filter(d => d.status !== 'REJETE' && LICENSE_DOC_TYPES.includes(d.type)).length / requiredDocCount) * 100;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -191,7 +207,7 @@ export default function DocumentSubmit() {
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <div className="mb-2 flex justify-between text-sm">
-                <span>{documents.filter(d => d.status !== 'REJETE').length}/{DOC_TYPES.length} documents</span>
+                <span>{documents.filter(d => d.status !== 'REJETE' && LICENSE_DOC_TYPES.includes(d.type)).length}/{requiredDocCount} documents</span>
                 <span>{Math.round(progress)}%</span>
               </div>
               <div className="h-2 w-full rounded-full bg-muted">
@@ -260,11 +276,36 @@ export default function DocumentSubmit() {
                       />
                     </div>
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="issuedAt">Date de delivrance</Label>
+                    <Input
+                      id="issuedAt"
+                      type="date"
+                      value={issuedAt}
+                      onChange={(e) => setIssuedAt(e.target.value)}
+                      required
+                    />
+                  </div>
+                  {selectedType === 'NIVEAU_ANGLAIS' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="englishLevel">Niveau d&apos;anglais (/6)</Label>
+                      <Select value={englishLevel} onValueChange={(value) => setEnglishLevel(value as '4' | '5' | '6')}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selectionnez une note" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="4">4/6 - validite 3 ans</SelectItem>
+                          <SelectItem value="5">5/6 - validite 6 ans</SelectItem>
+                          <SelectItem value="6">6/6 - validite a vie</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
 
                   <Button
                     type="submit"
                     className="h-11 w-full shadow-md"
-                    disabled={!selectedType || !selectedFile || isSubmitting}
+                    disabled={!selectedType || !selectedFile || !issuedAt || isSubmitting || (selectedType === 'NIVEAU_ANGLAIS' && !englishLevel)}
                   >
                     {isSubmitting ? (
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
@@ -312,7 +353,7 @@ export default function DocumentSubmit() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {DOC_TYPES.map((docType) => {
+              {[...DOC_TYPES, ...(Boolean(agent.instructeur || (agent.posteAdministratif && agent.posteAdministratif !== 'AUCUN')) ? (['JUSTIFICATIF_NOMINATION'] as DocumentType[]) : [])].map((docType) => {
                 const doc = documents.find(d => d.type === docType);
                 
                 return (

@@ -365,12 +365,9 @@ async function main() {
 
     // Create sample documents for the agent
     const docTypes = [
-      'PIECE_IDENTITE',
-      'PHOTO_IDENTITE', 
-      'CASIER_JUDICIAIRE',
       'CERTIFICAT_MEDICAL',
-      'ATTESTATION_FORMATION',
-      'CONTRAT_TRAVAIL'
+      'CONTROLE_COMPETENCE',
+      'NIVEAU_ANGLAIS'
     ];
 
     for (const docType of docTypes) {

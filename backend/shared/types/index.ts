@@ -13,12 +13,11 @@ export type AgentStatus =
   | 'LICENCE_SUSPENDUE';
 
 export type DocumentType = 
-  | 'PIECE_IDENTITE'
-  | 'PHOTO_IDENTITE'
-  | 'CASIER_JUDICIAIRE'
   | 'CERTIFICAT_MEDICAL'
-  | 'ATTESTATION_FORMATION'
-  | 'CONTRAT_TRAVAIL';
+  | 'CONTROLE_COMPETENCE'
+  | 'NIVEAU_ANGLAIS'
+  | 'JUSTIFICATIF_NOMINATION'
+  | 'PHOTO_IDENTITE';
 
 export type DocStatus = 'EN_ATTENTE' | 'VALIDE' | 'REJETE' | 'EXPIRE';
 
@@ -51,6 +50,9 @@ export interface Agent {
   nationaliteId: string;
   adresse: string;
   fonction: string;
+  grade?: 'STAGIAIRE' | 'CADET' | 'JUNIOR' | 'SENIOR';
+  instructeur?: boolean;
+  posteAdministratif?: 'CHEF_UNITE_ENF' | 'ENA' | 'QIP' | 'CHARGE_EN_ROUTE' | 'CHARGE_EXPLOITATION_NA' | 'AUCUN';
   employeurId: string;
   paysId: string;
   aeroportId: string;
@@ -58,6 +60,7 @@ export interface Agent {
   status: AgentStatus;
   sexe?: Sexe;
   qualifications?: string[];
+  licenseStatus?: 'VALIDE' | 'EXPIREE' | 'SUSPENDUE';
   whatsapp?: string;
   photoUrl?: string;
   emailVerified: boolean;
@@ -80,6 +83,9 @@ export interface Document {
   fileName: string;
   filePath: string;
   status: DocStatus;
+  issuedAt?: string;
+  expiresAt?: string;
+  englishLevel?: 4 | 5 | 6;
   validations?: Validation[];
   agent?: Agent;
   createdAt: string;
@@ -168,12 +174,11 @@ export interface DashboardStats {
 
 // Document labels
 export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
-  PIECE_IDENTITE: "Piece d'identite",
-  PHOTO_IDENTITE: "Photo d'identite",
-  CASIER_JUDICIAIRE: "Casier judiciaire",
   CERTIFICAT_MEDICAL: "Certificat medical",
-  ATTESTATION_FORMATION: "Attestation de formation",
-  CONTRAT_TRAVAIL: "Contrat de travail"
+  CONTROLE_COMPETENCE: "Controle de competence",
+  NIVEAU_ANGLAIS: "Niveau d'anglais",
+  JUSTIFICATIF_NOMINATION: "Justificatif de nomination",
+  PHOTO_IDENTITE: "Photo d'identite"
 };
 
 export const DOC_STATUS_LABELS: Record<DocStatus, string> = {

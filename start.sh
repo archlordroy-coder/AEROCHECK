@@ -16,6 +16,17 @@ echo -e "${BLUE}  AEROCHECK - Démarrage des services    ${NC}"
 echo -e "${BLUE}=========================================${NC}"
 echo ""
 
+# Charger les variables depuis .env si disponible
+if [ -f .env ]; then
+    # shellcheck disable=SC1091
+    set -a
+    . ./.env
+    set +a
+fi
+
+BACKEND_PORT=${PORT:-${API_PORT:-3001}}
+FRONTEND_PORT=${FRONTEND_PORT:-8080}
+
 # Check if npm is installed
 if ! command -v npm &> /dev/null; then
     echo -e "${YELLOW}❌ npm n'est pas installé${NC}"
@@ -33,7 +44,7 @@ cleanup() {
 trap cleanup SIGINT SIGTERM
 
 # Start Backend
-echo -e "${GREEN}🚀 Démarrage du Backend (localhost:3001)...${NC}"
+echo -e "${GREEN}🚀 Démarrage du Backend (localhost:${BACKEND_PORT})...${NC}"
 cd backend
 npm install --silent 2>/dev/null || true
 npm run dev &
@@ -44,7 +55,7 @@ cd ..
 sleep 3
 
 # Start Frontend
-echo -e "${GREEN}🚀 Démarrage du Frontend (localhost:8080)...${NC}"
+echo -e "${GREEN}🚀 Démarrage du Frontend (localhost:${FRONTEND_PORT})...${NC}"
 cd frontend
 npm install --silent 2>/dev/null || true
 npm run dev &
@@ -56,8 +67,8 @@ echo -e "${BLUE}=========================================${NC}"
 echo -e "${GREEN}✅ Services démarrés avec succès!${NC}"
 echo -e "${BLUE}=========================================${NC}"
 echo ""
-echo -e "📱 Frontend: ${YELLOW}http://localhost:8080${NC}"
-echo -e "🔌 Backend:   ${YELLOW}http://localhost:3001${NC}"
+echo -e "📱 Frontend: ${YELLOW}http://localhost:${FRONTEND_PORT}${NC}"
+echo -e "🔌 Backend:   ${YELLOW}http://localhost:${BACKEND_PORT}${NC}"
 echo ""
 echo -e "💡 ${YELLOW}Comptes de démo (mot de passe: password123):${NC}"
 echo -e "   • admin@aerocheck.com (Super Admin)"

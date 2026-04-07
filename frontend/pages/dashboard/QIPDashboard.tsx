@@ -402,8 +402,8 @@ export default function QIPDashboard() {
                               <Eye className="h-4 w-4 mr-1" />
                               Aperçu
                             </Button>
-                            <Button asChild size="sm" className="bg-yellow-600 hover:bg-yellow-700">
-                              <Link to={`/qip/verify/${doc.id}`}>
+                            <Button asChild size="sm" variant="outline">
+                              <Link to={`/app/qip/verify/${doc.id}`}>
                                 <Shield className="mr-1 h-3 w-3" />
                                 Verifier QIP
                               </Link>

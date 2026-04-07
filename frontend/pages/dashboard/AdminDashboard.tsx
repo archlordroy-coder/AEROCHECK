@@ -69,7 +69,7 @@ export default function AdminDashboard() {
           </p>
         </div>
         <Button asChild>
-          <Link to="/admin/users">
+          <Link to="/app/admin/users">
             <Users className="mr-2 h-4 w-4" />
             Gerer les utilisateurs
           </Link>
@@ -168,7 +168,7 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <Button asChild variant="outline" className="w-full">
-              <Link to="/admin/users">
+              <Link to="/app/admin/users">
                 Acceder
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
@@ -188,7 +188,7 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <Button asChild variant="outline" className="w-full">
-              <Link to="/supervision">
+              <Link to="/app/supervision">
                 Acceder
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
@@ -208,7 +208,7 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <Button asChild variant="outline" className="w-full">
-              <Link to="/qip">
+              <Link to="/app/qip">
                 Acceder
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>

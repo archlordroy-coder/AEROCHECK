@@ -373,7 +373,7 @@ export default function DLAADashboard() {
                         </TableCell>
                         <TableCell className="text-right">
                           <Button asChild size="sm" className="bg-primary hover:bg-primary/90">
-                          <Link to={`/dlaa/issue/${agent.id}`}>
+                          <Link to={`/app/dlaa/issue/${agent.id}`}>
                             <Printer className="mr-1 h-3 w-3" />
                             Delivrer licence
                           </Link>

@@ -53,7 +53,7 @@ export default function DocumentVerify() {
       } catch (error) {
         console.error('Error fetching document:', error);
         toast.error('Document non trouve');
-        navigate('/qip');
+        navigate('/app/qip');
       } finally {
         setIsLoading(false);
       }
@@ -83,7 +83,7 @@ export default function DocumentVerify() {
         ? `Document valide ${isQIP ? 'par QIP' : 'par DLAA'}` 
         : `Document rejete ${isQIP ? 'par QIP' : 'par DLAA'}`
       );
-      navigate(isQIP ? '/qip' : '/dlaa');
+      navigate(isQIP ? '/app/qip' : '/app/dlaa');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Erreur lors de la validation');
     } finally {
@@ -106,7 +106,7 @@ export default function DocumentVerify() {
         <CardContent className="py-12 text-center">
           <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-yellow-600" />
           <h3 className="text-lg font-medium">Document non trouve</h3>
-          <Button onClick={() => navigate('/qip')} className="mt-4">
+          <Button onClick={() => navigate('/app/qip')} className="mt-4">
             Retour
           </Button>
         </CardContent>
@@ -117,7 +117,7 @@ export default function DocumentVerify() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate(isQIP ? '/qip' : '/dlaa')}>
+        <Button variant="ghost" size="icon" onClick={() => navigate(isQIP ? '/app/qip' : '/app/dlaa')}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>

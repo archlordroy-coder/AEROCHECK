@@ -22,7 +22,7 @@ export default function NotFound() {
           Route introuvable
         </p>
         <h1 className="mt-3 font-display text-4xl font-black tracking-tight text-foreground md:text-5xl">
-          Cet ecran n'existe pas encore dans le parcours ATCOCLICLE.
+          Cet ecran n'existe pas encore dans le parcours AEROCHECK.
         </h1>
         <p className="mt-4 text-base leading-8 text-muted-foreground">
           L'interface a ete recentree sur le centre de pilotage et les postes

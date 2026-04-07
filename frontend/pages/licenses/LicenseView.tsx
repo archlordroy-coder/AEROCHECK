@@ -148,7 +148,7 @@ export default function LicenseView() {
           <div className="bg-gradient-to-br from-primary to-primary/80 p-6 text-primary-foreground">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm opacity-80">ASECNA - ATCOCLICLE</p>
+                <p className="text-sm opacity-80">ASECNA - AEROCHECK</p>
                 <h2 className="text-xl font-bold mt-1">Licence DLAA</h2>
               </div>
               <CreditCard className="h-10 w-10 opacity-80" />

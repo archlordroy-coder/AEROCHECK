@@ -89,12 +89,12 @@ export default function DashboardLayout() {
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground overflow-hidden">
             <img
               src={appLogo}
-              alt="Logo ATCOCLICLE"
+              alt="Logo AEROCHECK"
               className="h-8 w-8 object-contain"
             />
           </div>
           <div>
-            <h1 className="text-lg font-bold">ATCOCLICLE</h1>
+            <h1 className="text-lg font-bold">AEROCHECK</h1>
             <p className="text-xs text-sidebar-foreground/60">ASECNA</p>
           </div>
           <Button 

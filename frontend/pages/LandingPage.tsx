@@ -22,9 +22,9 @@ export default function LandingPage() {
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link to="/" className="flex items-center gap-3 transition-transform hover:scale-105">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-border">
-              <img src={appLogo} alt="ATCOCLICLE Logo" className="h-7 w-7 object-contain" />
+              <img src={appLogo} alt="AEROCHECK Logo" className="h-7 w-7 object-contain" />
             </div>
-            <span className="text-xl font-black tracking-tight text-foreground">ATCOCLICLE</span>
+            <span className="text-xl font-black tracking-tight text-foreground">AEROCHECK</span>
           </Link>
           <nav className="hidden md:flex items-center gap-6">
             <a href="#fonctionnalites" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
@@ -240,7 +240,7 @@ export default function LandingPage() {
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold mb-4">Aeroports Partenaires</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Principaux aeroports couverts par la plateforme ATCOCLICLE
+              Principaux aeroports couverts par la plateforme AEROCHECK
             </p>
           </div>
           <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -274,7 +274,7 @@ export default function LandingPage() {
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-4">Pret a commencer ?</h2>
           <p className="text-primary-foreground/80 mb-8 max-w-2xl mx-auto">
-            Rejoignez les milliers d'ATCOS qui utilisent ATCOCLICLE pour suivre l'etat de validite de leurs documents.
+            Rejoignez les milliers d'ATCOS qui utilisent AEROCHECK pour suivre l'etat de validite de leurs documents.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/register">
@@ -299,9 +299,9 @@ export default function LandingPage() {
             <div>
               <div className="flex items-center gap-3 mb-4">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-border">
-                  <img src={appLogo} alt="ATCOCLICLE Logo" className="h-7 w-7 object-contain" />
+                  <img src={appLogo} alt="AEROCHECK Logo" className="h-7 w-7 object-contain" />
                 </div>
-                <span className="text-lg font-bold tracking-tight">ATCOCLICLE</span>
+                <span className="text-lg font-bold tracking-tight">AEROCHECK</span>
               </div>
               <p className="text-sm text-muted-foreground">
                 Plateforme officielle de gestion des licences des ATCOS ASECNA.
@@ -333,7 +333,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground">
-            <p>&copy; 2024 ATCOCLICLE - ASECNA. Tous droits reserves.</p>
+            <p>&copy; 2024 AEROCHECK - ASECNA. Tous droits reserves.</p>
           </div>
         </div>
       </footer>

@@ -122,7 +122,7 @@ export default function RegisterPage() {
         whatsapp: formData.whatsapp || undefined,
         dateNaissance: formData.dateNaissance || undefined,
       });
-      toast.success('Inscription reussie ! Bienvenue sur ATCOCLICLE');
+      toast.success('Inscription reussie ! Bienvenue sur AEROCHECK');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erreur lors de l'inscription");
     } finally {
@@ -136,9 +136,9 @@ export default function RegisterPage() {
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary/20 via-background to-muted items-center justify-center p-8">
         <div className="flex flex-col items-center gap-6">
           <div className="group flex h-72 w-72 items-center justify-center rounded-[4rem] bg-white shadow-2xl ring-4 ring-border/50 transition-all duration-500 hover:rotate-6 hover:scale-110">
-            <img src={appLogo} alt="ATCOCLICLE Logo" className="h-56 w-56 object-contain" />
+            <img src={appLogo} alt="AEROCHECK Logo" className="h-56 w-56 object-contain" />
           </div>
-          <h1 className="text-5xl font-black tracking-tighter text-foreground drop-shadow-lg">ATCOCLICLE</h1>
+          <h1 className="text-5xl font-black tracking-tighter text-foreground drop-shadow-lg">AEROCHECK</h1>
           <p className="text-xl text-muted-foreground font-medium">ATCO Licence Validity Monitor</p>
           <div className="mt-8 text-center text-sm text-muted-foreground max-w-md">
             <p className="mb-4">Plateforme de gestions des licenses des controleurs aeriens de l'ASECNA</p>
@@ -158,9 +158,9 @@ export default function RegisterPage() {
           {/* Mobile logo (visible only on small screens) */}
           <div className="lg:hidden flex flex-col items-center gap-3 mb-8">
             <div className="group flex h-24 w-24 items-center justify-center rounded-[2rem] bg-white shadow-xl ring-2 ring-border/50">
-              <img src={appLogo} alt="ATCOCLICLE Logo" className="h-16 w-16 object-contain" />
+              <img src={appLogo} alt="AEROCHECK Logo" className="h-16 w-16 object-contain" />
             </div>
-            <h1 className="text-3xl font-black tracking-tighter">ATCOCLICLE</h1>
+            <h1 className="text-3xl font-black tracking-tighter">AEROCHECK</h1>
           </div>
 
           <CardHeader className="space-y-1 text-center lg:text-left">

@@ -1,10 +1,10 @@
 import { OverviewResponse } from "@shared/api";
 
 export const overviewData: OverviewResponse = {
-  productName: "ATCOCLICLE",
+  productName: "AEROCHECK",
   tagline: "ATCO Licence Validity Monitor",
   description:
-    "ATCOCLICLE assure le suivi de la validite des documents qui permettent la delivrance et le renouvellement des licences des controleurs aeriens de l'ASECNA.",
+    "AEROCHECK assure le suivi de la validite des documents qui permettent la delivrance et le renouvellement des licences des controleurs aeriens de l'ASECNA.",
   objectives: [
     "Assurer le monitoring de l'etat des licences ATCO (valide, expiree, suspendue).",
     "Automatiser les alertes d'expiration des trois documents critiques.",

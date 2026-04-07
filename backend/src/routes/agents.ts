@@ -428,6 +428,51 @@ router.get('/:id/licenses', authenticate, async (req: AuthRequest, res: Response
   }
 });
 
+// Get agent photo
+router.get('/:id/photo', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const agent = await prisma.agent.findUnique({
+      where: { id: req.params.id }
+    });
+
+    if (!agent) {
+      throw new AppError('Agent non trouve', 404);
+    }
+
+    if (!agent.photoUrl) {
+      throw new AppError('Photo non disponible', 404);
+    }
+
+    // Import path and fs
+    const path = await import('path');
+    const fs = await import('fs');
+    
+    const filePath = path.join(process.cwd(), agent.photoUrl.startsWith('/') ? agent.photoUrl.substring(1) : agent.photoUrl);
+    
+    if (!fs.existsSync(filePath)) {
+      throw new AppError('Fichier photo non trouve', 404);
+    }
+
+    // Determine content type
+    const ext = path.extname(filePath).toLowerCase();
+    const contentTypeMap: Record<string, string> = {
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.gif': 'image/gif'
+    };
+    const contentType = contentTypeMap[ext] || 'image/jpeg';
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', 'inline');
+    
+    const stream = fs.createReadStream(filePath);
+    stream.pipe(res);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Delete agent (ADMIN only)
 router.delete(
   '/:id',

@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { User, MapPin, Briefcase, Plane, Calendar, Save, Loader2, Camera, FileText, Award, Clock, Upload, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { User, MapPin, Briefcase, Plane, Calendar, Save, Loader2, Camera, FileText, Award, Clock, Upload, CheckCircle, XCircle, AlertCircle, Eye } from 'lucide-react';
 import { AGENT_STATUS_LABELS, LICENSE_STATUS_LABELS, DOCUMENT_TYPE_LABELS } from '@shared/types';
 import type { Agent, Document as AgentDocument, License } from '@shared/types';
 
@@ -188,6 +188,9 @@ export default function AgentProfile() {
       await documentsApi.upload(agent.id, formData);
       toast.success('Photo téléchargée avec succès');
       setPhotoFile(null);
+      // Refresh agent data to get updated photoUrl
+      const agentRes = await agentsApi.getById(agent.id);
+      setAgent(agentRes.data);
       // Refresh documents
       const docsRes = await documentsApi.list({ agentId: agent.id });
       setDocuments(docsRes.data);
@@ -271,16 +274,26 @@ export default function AgentProfile() {
                 {/* Photo Section */}
                 <div className="flex flex-col items-center gap-3">
                   <div className="relative">
-                    <div className="h-32 w-32 rounded-full bg-muted flex items-center justify-center overflow-hidden border-4 border-background shadow-lg">
+                    <div 
+                      className="h-32 w-32 rounded-full bg-muted flex items-center justify-center overflow-hidden border-4 border-background shadow-lg cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                      onClick={() => agent.photoUrl && window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/agents/${agent.id}/photo`, '_blank')}
+                    >
                       {agent.photoUrl ? (
                         <img 
-                          src={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${agent.photoUrl}`} 
-                          alt="Photo" 
-                          className="h-full w-full object-cover" 
+                          src={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/agents/${agent.id}/photo`}
+                          alt="Photo de profil" 
+                          className="h-full w-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                            (e.target as HTMLImageElement).parentElement?.classList.add('photo-error');
+                          }}
                         />
                       ) : (
                         <Camera className="h-12 w-12 text-muted-foreground" />
                       )}
+                      <div className="photo-error hidden h-full w-full flex items-center justify-center">
+                        <Camera className="h-12 w-12 text-muted-foreground" />
+                      </div>
                     </div>
                     <input
                       ref={fileInputRef}
@@ -299,9 +312,25 @@ export default function AgentProfile() {
                     </Button>
                   </div>
                   {photoFile && (
-                    <Button size="sm" onClick={uploadPhoto} className="w-full">
-                      <Upload className="mr-1 h-3 w-3" />
-                      Telecharger
+                    <div className="w-full space-y-2">
+                      <p className="text-xs text-center text-muted-foreground">
+                        {photoFile.name}
+                      </p>
+                      <Button size="sm" onClick={uploadPhoto} className="w-full">
+                        <Upload className="mr-1 h-3 w-3" />
+                        Telecharger
+                      </Button>
+                    </div>
+                  )}
+                  {agent.photoUrl && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-xs"
+                      onClick={() => window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/agents/${agent.id}/photo`, '_blank')}
+                    >
+                      <Eye className="mr-1 h-3 w-3" />
+                      Voir la photo
                     </Button>
                   )}
                 </div>

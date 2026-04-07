@@ -12,7 +12,7 @@ module.exports = {
       exec_mode: 'fork',
       env: {
         NODE_ENV: 'production',
-        PORT: 3010,
+        PORT: 3300,
       },
       log_file: '/var/log/pm2/aerocheck-combined.log',
       out_file: '/var/log/pm2/aerocheck-out.log',
@@ -29,13 +29,13 @@ module.exports = {
     {
       name: 'aerocheck-frontend',
       script: 'npm',
-      args: 'run preview -- --host 0.0.0.0 --port 3300',
+      args: 'run preview -- --host 0.0.0.0 --port 3010',
       cwd: '/var/www/AEROCHECK/frontend',
       instances: 1,
       exec_mode: 'fork',
       env: {
         NODE_ENV: 'production',
-        FRONTEND_PORT: 3300,
+        FRONTEND_PORT: 3010,
       },
       log_file: '/var/log/pm2/aerocheck-frontend-combined.log',
       out_file: '/var/log/pm2/aerocheck-frontend-out.log',

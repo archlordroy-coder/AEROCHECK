@@ -25,7 +25,7 @@ const envPath = path.resolve(__dirname, '../../.env');
 dotenv.config({ path: envPath });
 
 const app = express();
-const PORT = process.env.PORT || 3010;
+const PORT = process.env.PORT || 3300;
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(process.cwd(), 'uploads');
@@ -36,7 +36,7 @@ if (!fs.existsSync(uploadsDir)) {
 // CORS configuration
 const corsOrigins = process.env.CORS_ORIGINS 
   ? process.env.CORS_ORIGINS.split(',') 
-  : ['http://localhost:3300', 'http://127.0.0.1:3300'];
+  : ['http://localhost:3010', 'http://127.0.0.1:3010'];
 
 app.use(cors({
   origin: corsOrigins,
@@ -46,6 +46,17 @@ app.use(express.json());
 
 // Static files for uploads
 app.use('/uploads', express.static(uploadsDir));
+
+// Serve frontend static files (production build)
+const frontendDistPath = path.join(__dirname, '../../../frontend/dist');
+if (fs.existsSync(frontendDistPath)) {
+  app.use(express.static(frontendDistPath));
+  
+  // SPA catch-all route - serve index.html for non-API routes
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(frontendDistPath, 'index.html'));
+  });
+}
 
 // Health check
 app.get('/api/health', (_req, res) => {

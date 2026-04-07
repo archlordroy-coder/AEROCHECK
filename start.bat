@@ -28,8 +28,8 @@ if errorlevel 1 (
 REM Get script directory
 cd /d "%~dp0"
 
-set "BACKEND_PORT=3010"
-set "FRONTEND_PORT=3300"
+set "BACKEND_PORT=3300"
+set "FRONTEND_PORT=3010"
 
 echo %GREEN%🚀 Demarrage du Backend (localhost:%BACKEND_PORT%)...%NC%
 start "AEROCHECK Backend" cmd /c "cd /d "%~dp0backend" && npm install --silent 2>nul && set PORT=%BACKEND_PORT% && npm run dev"

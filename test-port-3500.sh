@@ -48,7 +48,30 @@ else
     echo ""
 fi
 
-# 2. Tester la liaison (bind) sur le port
+# 2. Vérifier les processus PM2
+echo "2. Vérification des processus PM2..."
+if command -v pm2 &> /dev/null; then
+    PM2_LIST=$(pm2 list 2>/dev/null || true)
+    if echo "$PM2_LIST" | grep -q "online"; then
+        echo "Processus PM2 actifs:"
+        echo "$PM2_LIST" | grep -E "(name|online|stopped)" || true
+        
+        # Vérifier si un processus PM2 utilise le port 3500
+        PM2_ENV=$(pm2 env 2>/dev/null || true)
+        if echo "$PM2_ENV" | grep -q "PORT.*3500\|3500.*PORT"; then
+            echo -e "${YELLOW}⚠️  Un processus PM2 est configuré pour utiliser le port 3500${NC}"
+        else
+            echo -e "${GREEN}✅ Aucun processus PM2 n'utilise le port 3500${NC}"
+        fi
+    else
+        echo -e "${GREEN}✅ Aucun processus PM2 actif${NC}"
+    fi
+else
+    echo -e "${YELLOW}⚠️  PM2 n'est pas installé${NC}"
+fi
+echo ""
+
+# 3. Tester la liaison (bind) sur le port
 echo "2. Test de liaison sur le port $PORT..."
 if command -v nc &> /dev/null || command -v netcat &> /dev/null; then
     # Test avec netcat

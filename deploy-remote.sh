@@ -12,25 +12,38 @@ set -e
 
 if [ -f .env ]; then
     # Charger les variables .env sans fuites vers xargs
-    export $(grep -v '^#' .env | grep -E '^(SERVER|DOMAIN|PORT|DEST)=' | sed 's/\r$//' | xargs)
+    export $(grep -v '^#' .env | grep -E '^(SERVER|PORT|DEST|DOMAIN|PM2|PASS)=' | sed 's/\r$//' | xargs)
 fi
 
-# Valeurs par défaut
-REMOTE_USER=${SERVER_USER:-"www-data"}
-REMOTE_HOST=${SERVER_IP:-"localhost"}
+REMOTE_USER=${SERVER_USER:-"root"}
+REMOTE_HOST=${SERVER_IP:-"82.165.150.150"}
 REMOTE_DIR=${DEST_DIR:-"/var/www/AEROCHECK"}
 DOMAIN=${DOMAIN:-$REMOTE_HOST}
 SOURCE_DIR="$(pwd)"
-PORT=${PORT:-3001}
+PORT=${PORT:-3500}
 PM2_NAME=${PM2_NAME:-"aerocheck-backend"}
+SERVER_PASS=${SERVER_PASS:-""}
 
 # SSH Control socket pour connexion persistante
 CONTROL_SOCKET="/tmp/ssh-aerocheck-deploy-$USER"
 
 # Options SSH avec ControlMaster
 SSH_OPT="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ControlMaster=auto -o ControlPath=$CONTROL_SOCKET -o ControlPersist=60"
-SSH_CMD="ssh $SSH_OPT"
-RSYNC_SSH="ssh $SSH_OPT"
+
+# Configuration SSH avec mot de passe
+if [ -n "$SERVER_PASS" ]; then
+    if ! command -v sshpass &> /dev/null; then
+        echo "❌ ERREUR: sshpass n'est pas installé"
+        echo "Installez-le: sudo apt-get install sshpass"
+        exit 1
+    fi
+    export SSHPASS="$SERVER_PASS"
+    SSH_CMD="sshpass -e ssh $SSH_OPT"
+    RSYNC_SSH="sshpass -e ssh $SSH_OPT"
+else
+    SSH_CMD="ssh $SSH_OPT"
+    RSYNC_SSH="ssh $SSH_OPT"
+fi
 
 echo "🚀 Démarrage du déploiement AEROCHECK"
 echo "   Serveur: $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR"

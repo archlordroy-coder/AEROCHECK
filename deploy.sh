@@ -136,14 +136,14 @@ log_info "Vérification de la santé (timeout: ${timeout}s)..."
 sleep 3
 
 # Récupérer le port depuis le .env (PORT ou API_PORT)
-APP_PORT="3009"
+APP_PORT="3010"
 FRONT_PORT="3300"
 if [ -f "$PROJECT_DIR/.env" ]; then
     # shellcheck disable=SC1091
     set -a
     . "$PROJECT_DIR/.env"
     set +a
-    APP_PORT=${PORT:-${API_PORT:-3009}}
+    APP_PORT=${PORT:-${API_PORT:-3010}}
     FRONT_PORT=${FRONTEND_PORT:-3300}
 fi
 HEALTH_URL="http://localhost:$APP_PORT/api/health"

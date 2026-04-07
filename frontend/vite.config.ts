@@ -5,7 +5,7 @@ import path from "node:path";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const rootEnv = loadEnv(mode, path.resolve(__dirname, ".."), "");
-  const backendPort = rootEnv.PORT || rootEnv.API_PORT || "3009";
+  const backendPort = rootEnv.PORT || rootEnv.API_PORT || "3010";
   const backendBaseUrl =
     rootEnv.API_BASE_URL || `http://127.0.0.1:${backendPort}`;
 

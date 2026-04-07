@@ -20,7 +20,7 @@ export function createServer() {
     res.json({
       message: process.env.PING_MESSAGE ?? "AEROCHECK API ready",
       status: "ok",
-      apiBaseUrl: process.env.API_BASE_URL || `http://localhost:${process.env.API_PORT || 3009}`,
+      apiBaseUrl: process.env.API_BASE_URL || `http://localhost:${process.env.API_PORT || 3010}`,
     });
   });
 

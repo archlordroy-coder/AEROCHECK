@@ -1,19 +1,22 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { agentsApi, referencesApi, documentsApi } from '@/lib/api';
+import { agentsApi, referencesApi, documentsApi, resolveApiAssetUrl } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { User, MapPin, Briefcase, Plane, Calendar, Save, Loader2, Camera, FileText, Award, Clock, Upload, CheckCircle, XCircle, AlertCircle, Eye } from 'lucide-react';
+import { User, MapPin, Briefcase, Plane, Calendar, Save, Loader2, FileText, Award, Clock, CheckCircle, XCircle, AlertCircle, Camera } from 'lucide-react';
 import { AGENT_STATUS_LABELS, LICENSE_STATUS_LABELS, DOCUMENT_TYPE_LABELS } from '@shared/types';
 import type { Agent, Document as AgentDocument, License } from '@shared/types';
+import { filterLicenseDocuments, getRequiredLicenseDocumentTypes, requiresJustificatif } from '@/lib/priority-documents';
+import { getLicenseMonitoringDate } from '@/lib/license-validity';
 
-const QUALIFICATIONS_OPTIONS = ['ADC', 'APP', 'APS', 'ACP', 'ACS', 'AEROPORT'];
+const QUALIFICATIONS_OPTIONS = ['ADC', 'APP', 'APS', 'ACP', 'ACS', 'ARP'];
 const GRADES = ['STAGIAIRE', 'CADET', 'JUNIOR', 'SENIOR'] as const;
 const POSTES_ADMIN = ['AUCUN', 'CHEF_UNITE_ENF', 'ENA', 'QIP', 'CHARGE_EN_ROUTE', 'CHARGE_EXPLOITATION_NA'] as const;
 const LICENSE_STATUSES = ['VALIDE', 'EXPIREE', 'SUSPENDUE'] as const;
@@ -50,6 +53,7 @@ export default function AgentProfile() {
   const [agent, setAgent] = useState<Agent | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   
   // Reference data from API
   const [nationalites, setNationalites] = useState<Nationalite[]>([]);
@@ -69,7 +73,7 @@ export default function AgentProfile() {
     employeurId: '',
     paysId: '',
     aeroportId: '',
-    sexe: '',
+    sexe: '' as '' | 'M' | 'F',
     qualifications: [] as string[],
     licenseStatus: 'VALIDE' as (typeof LICENSE_STATUSES)[number],
     whatsapp: ''
@@ -78,9 +82,10 @@ export default function AgentProfile() {
   // Documents and licenses
   const [documents, setDocuments] = useState<AgentDocument[]>([]);
   const [licenses, setLicenses] = useState<License[]>([]);
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const requiredDocumentTypes = getRequiredLicenseDocumentTypes(agent);
+  const priorityDocuments = filterLicenseDocuments(documents).filter((document) => requiredDocumentTypes.includes(document.type));
+  const profilePhotoUrl = resolveApiAssetUrl(agent?.photoUrl);
+  const initials = `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}`.trim() || 'AG';
 
   useEffect(() => {
     const fetchData = async () => {
@@ -169,50 +174,27 @@ export default function AgentProfile() {
     }));
   };
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('La photo ne doit pas dépasser 5MB');
-        return;
-      }
-      if (!file.type.startsWith('image/')) {
-        toast.error('Veuillez sélectionner une image');
-        return;
-      }
-      setPhotoFile(file);
-      // Create preview URL
-      const previewUrl = URL.createObjectURL(file);
-      setPhotoPreview(previewUrl);
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !agent) {
+      return;
     }
-  };
 
-  const uploadPhoto = async () => {
-    if (!photoFile || !agent) return;
-    
+    const formData = new FormData();
+    formData.append('photo', file);
+    setIsUploadingPhoto(true);
+
     try {
-      const formData = new FormData();
-      formData.append('file', photoFile);
-      formData.append('type', 'PHOTO_IDENTITE');
-      formData.append('issuedAt', new Date().toISOString().slice(0, 10));
-      await documentsApi.upload(agent.id, formData);
-      toast.success('Photo téléchargée avec succès');
-      
-      // Clean up preview URL
-      if (photoPreview) {
-        URL.revokeObjectURL(photoPreview);
+      const response = await agentsApi.uploadPhoto(agent.id, formData);
+      if (response.success && response.data) {
+        setAgent(response.data);
+        toast.success('Photo de profil mise a jour');
       }
-      setPhotoFile(null);
-      setPhotoPreview(null);
-      
-      // Refresh agent data to get updated photoUrl
-      const agentRes = await agentsApi.get(agent.id);
-      setAgent(agentRes.data);
-      // Refresh documents
-      const docsRes = await documentsApi.list({ agentId: agent.id });
-      setDocuments(docsRes.data);
     } catch (error) {
-      toast.error('Erreur lors du téléchargement de la photo');
+      toast.error(error instanceof Error ? error.message : 'Erreur lors de l\'upload de la photo');
+    } finally {
+      setIsUploadingPhoto(false);
+      event.target.value = '';
     }
   };
 
@@ -224,7 +206,8 @@ export default function AgentProfile() {
       if (agent) {
         const payload = {
           ...formData,
-          grade: formData.grade || undefined
+          grade: formData.grade || undefined,
+          sexe: formData.sexe || undefined,
         };
         await agentsApi.update(agent.id, payload);
         toast.success('Profil mis a jour avec succes');
@@ -237,6 +220,7 @@ export default function AgentProfile() {
         const payload = {
           ...formData,
           grade: formData.grade || undefined,
+          sexe: formData.sexe || undefined,
           matricule,
           lieuNaissance: 'Non specifie',
           zoneAcces: [],
@@ -293,92 +277,38 @@ export default function AgentProfile() {
           {/* Photo and Summary Card */}
           <Card>
             <CardContent className="pt-6">
-              <div className="flex items-start gap-6">
-                {/* Photo Section */}
-                <div className="flex flex-col items-center gap-3">
-                  <div className="relative">
-                    <div 
-                      className="h-32 w-32 rounded-full bg-muted flex items-center justify-center overflow-hidden border-4 border-background shadow-lg cursor-pointer hover:ring-2 hover:ring-primary transition-all"
-                      onClick={() => agent.photoUrl && window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/agents/${agent.id}/photo`, '_blank')}
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+                <div className="flex w-full max-w-xs flex-col items-center gap-4 rounded-xl border border-dashed p-5 text-center">
+                  <Avatar className="h-28 w-28 border bg-muted">
+                    <AvatarImage src={profilePhotoUrl} alt="Photo de profil agent" />
+                    <AvatarFallback className="text-lg font-semibold">{initials}</AvatarFallback>
+                  </Avatar>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Photo de profil</p>
+                    <p className="text-xs text-muted-foreground">
+                      {agent.photoUrl ? 'La photo est stockee sur le backend.' : 'Ajoutez une photo qui sera stockee sur le backend.'}
+                    </p>
+                  </div>
+                  <div className="w-full">
+                    <Label
+                      htmlFor="agent-photo-upload"
+                      className="flex cursor-pointer items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
                     >
-                      {photoPreview ? (
-                        <img 
-                          src={photoPreview}
-                          alt="Preview" 
-                          className="h-full w-full object-cover"
-                        />
-                      ) : agent.photoUrl ? (
-                        <img 
-                          src={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/agents/${agent.id}/photo`}
-                          alt="Photo de profil" 
-                          className="h-full w-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
-                            (e.target as HTMLImageElement).parentElement?.classList.add('photo-error');
-                          }}
-                        />
-                      ) : (
-                        <Camera className="h-12 w-12 text-muted-foreground" />
-                      )}
-                      <div className="photo-error hidden h-full w-full flex items-center justify-center">
-                        <Camera className="h-12 w-12 text-muted-foreground" />
-                      </div>
-                    </div>
-                    <input
-                      ref={fileInputRef}
+                      {isUploadingPhoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                      {isUploadingPhoto ? 'Upload en cours...' : 'Changer la photo'}
+                    </Label>
+                    <Input
+                      id="agent-photo-upload"
                       type="file"
                       accept="image/*"
-                      onChange={handlePhotoChange}
                       className="hidden"
+                      disabled={!agent || isUploadingPhoto}
+                      onChange={handlePhotoUpload}
                     />
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="absolute -bottom-2 -right-2 rounded-full h-8 w-8 p-0"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <Camera className="h-4 w-4" />
-                    </Button>
                   </div>
-                  {photoFile && (
-                    <div className="w-full space-y-2">
-                      <p className="text-xs text-center text-muted-foreground">
-                        {photoFile.name}
-                      </p>
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={uploadPhoto} className="flex-1">
-                          <Upload className="mr-1 h-3 w-3" />
-                          Confirmer
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => {
-                            if (photoPreview) URL.revokeObjectURL(photoPreview);
-                            setPhotoFile(null);
-                            setPhotoPreview(null);
-                          }}
-                        >
-                          Annuler
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                  {agent.photoUrl && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="text-xs"
-                      onClick={() => window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/agents/${agent.id}/photo`, '_blank')}
-                    >
-                      <Eye className="mr-1 h-3 w-3" />
-                      Voir la photo
-                    </Button>
-                  )}
                 </div>
 
-                {/* Agent Info Summary */}
-                <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid flex-1 grid-cols-2 gap-4 md:grid-cols-4">
                   <div>
                     <p className="text-xs text-muted-foreground">Matricule</p>
                     <p className="font-mono font-medium">{agent.matricule}</p>
@@ -423,24 +353,31 @@ export default function AgentProfile() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <FileText className="h-4 w-4" />
-                  Documents soumis ({documents.length})
+                  Documents requis ({priorityDocuments.length}/{requiredDocumentTypes.length})
                 </CardTitle>
                 <CardDescription>
-                  Etat de votre dossier documentaire
+                  Certificat medical, controle de competence, niveau d&apos;anglais
+                  {requiresJustificatif(agent) ? ' et justificatif de nomination' : ''}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {documents.length === 0 ? (
+                {priorityDocuments.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">
                     Aucun document soumis
                   </p>
                 ) : (
                   <div className="space-y-2">
-                    {documents.map((doc) => (
+                    {priorityDocuments.map((doc) => (
                       <div key={doc.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
                         <div className="flex items-center gap-2">
                           <FileText className="h-4 w-4 text-muted-foreground" />
                           <span className="text-sm">{DOCUMENT_TYPE_LABELS[doc.type as keyof typeof DOCUMENT_TYPE_LABELS] || doc.type}</span>
+                          {doc.issuedAt && (
+                            <span className="text-xs text-muted-foreground">
+                              Delivre le {new Date(doc.issuedAt).toLocaleDateString('fr-FR')}
+                              {doc.expiresAt ? ` • Expire le ${new Date(doc.expiresAt).toLocaleDateString('fr-FR')}` : ' • Valide a vie'}
+                            </span>
+                          )}
                         </div>
                         <Badge className={
                           doc.status === 'VALIDE' ? 'bg-green-500/10 text-green-600' :
@@ -477,12 +414,17 @@ export default function AgentProfile() {
                   </p>
                 ) : (
                   <div className="space-y-2">
-                    {licenses.map((license) => (
-                      <div key={license.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                    {licenses.map((license) => {
+                      const nextMonitoringDate = getLicenseMonitoringDate(agent, license);
+
+                      return (
+                        <div key={license.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
                         <div>
                           <p className="text-sm font-medium">{license.numero}</p>
                           <p className="text-xs text-muted-foreground">
-                            Exp: {new Date(license.dateExpiration).toLocaleDateString('fr-FR')}
+                            {nextMonitoringDate
+                              ? `Prochaine echeance: ${nextMonitoringDate.toLocaleDateString('fr-FR')}`
+                              : 'Validite liee aux documents'}
                           </p>
                         </div>
                         <Badge className={
@@ -492,8 +434,9 @@ export default function AgentProfile() {
                         }>
                           {LICENSE_STATUS_LABELS[license.status as keyof typeof LICENSE_STATUS_LABELS] || license.status}
                         </Badge>
-                      </div>
-                    ))}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>
@@ -613,7 +556,9 @@ export default function AgentProfile() {
                   </SelectTrigger>
                   <SelectContent>
                     {GRADES.map((grade) => (
-                      <SelectItem key={grade} value={grade}>{grade.toLowerCase()}</SelectItem>
+                      <SelectItem key={grade} value={grade}>
+                        {grade === 'STAGIAIRE' ? 'Stagiaire' : grade === 'CADET' ? 'Cadet' : grade === 'JUNIOR' ? 'Junior' : 'Senior'}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -700,7 +645,7 @@ export default function AgentProfile() {
               </div>
 
               <div className="space-y-3">
-                <Label>Qualifications ATCO</Label>
+                <Label>Qualifications</Label>
                 <div className="flex flex-wrap gap-2">
                   {QUALIFICATIONS_OPTIONS.map((qual) => (
                     <label

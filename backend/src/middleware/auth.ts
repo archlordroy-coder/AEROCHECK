@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { prisma } from '../index.js';
+import { dbHelpers } from '../db.js';
 import type { Role } from '../../shared/types/index.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'aerocheck-secret-key-2024';
@@ -36,9 +36,7 @@ export const authenticate = async (
     
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
     
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId }
-    });
+    const user = dbHelpers.getById('User', decoded.userId) as any;
 
     if (!user) {
       res.status(401).json({ success: false, error: 'Utilisateur non trouve' });

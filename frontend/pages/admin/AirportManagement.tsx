@@ -56,7 +56,7 @@ export default function AirportManagement() {
     try {
       setLoading(true);
       const response = await api.get('/airports');
-      setAirports(response.data);
+      setAirports((response.data as { success: boolean; data: Airport[] }).data ?? []);
     } catch (error) {
       // Mock data for demo
       setAirports([
@@ -134,7 +134,7 @@ export default function AirportManagement() {
     } catch (error: any) {
       toast({
         title: 'Erreur',
-        description: error.response?.data?.message || 'Erreur lors de la creation',
+        description: error instanceof Error ? error.message : 'Erreur lors de la creation',
         variant: 'destructive',
       });
     }
@@ -154,7 +154,7 @@ export default function AirportManagement() {
     } catch (error: any) {
       toast({
         title: 'Erreur',
-        description: error.response?.data?.message || 'Erreur lors de la mise a jour',
+        description: error instanceof Error ? error.message : 'Erreur lors de la mise a jour',
         variant: 'destructive',
       });
     }

@@ -5,25 +5,27 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { Suspense, lazy } from "react";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 
 // Pages
-import LandingPage from "@/pages/LandingPage";
-import LoginPage from "@/pages/auth/LoginPage";
-import RegisterPage from "@/pages/auth/RegisterPage";
-import DashboardLayout from "@/components/layout/DashboardLayout";
-import AgentDashboard from "@/pages/dashboard/AgentDashboard";
-import QIPDashboard from "@/pages/dashboard/QIPDashboard";
-import DLAADashboard from "@/pages/dashboard/DLAADashboard";
-import SuperviseurDashboard from "@/pages/dashboard/SuperviseurDashboard";
-import AdminDashboard from "@/pages/dashboard/AdminDashboard";
-import AgentProfile from "@/pages/agent/AgentProfile";
-import DocumentSubmit from "@/pages/documents/DocumentSubmit";
-import DocumentVerify from "@/pages/documents/DocumentVerify";
-import LicenseIssue from "@/pages/licenses/LicenseIssue";
-import LicenseView from "@/pages/licenses/LicenseView";
-import UserManagement from "@/pages/admin/UserManagement";
-import NotFound from "@/pages/NotFound";
+const LandingPage = lazy(() => import("@/pages/LandingPage"));
+const LoginPage = lazy(() => import("@/pages/auth/LoginPage"));
+const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage"));
+const DashboardLayout = lazy(() => import("@/components/layout/DashboardLayout"));
+const AgentDashboard = lazy(() => import("@/pages/dashboard/AgentDashboard"));
+const QIPDashboard = lazy(() => import("@/pages/dashboard/QIPDashboard"));
+const DLAADashboard = lazy(() => import("@/pages/dashboard/DLAADashboard"));
+const DLAAReview = lazy(() => import("@/pages/dlaa/DLAAReview"));
+const SuperviseurDashboard = lazy(() => import("@/pages/dashboard/SuperviseurDashboard"));
+const AdminDashboard = lazy(() => import("@/pages/dashboard/AdminDashboard"));
+const AgentProfile = lazy(() => import("@/pages/agent/AgentProfile"));
+const DocumentSubmit = lazy(() => import("@/pages/documents/DocumentSubmit"));
+const DocumentVerify = lazy(() => import("@/pages/documents/DocumentVerify"));
+const LicenseIssue = lazy(() => import("@/pages/licenses/LicenseIssue"));
+const LicenseView = lazy(() => import("@/pages/licenses/LicenseView"));
+const UserManagement = lazy(() => import("@/pages/admin/UserManagement"));
+const NotFound = lazy(() => import("@/pages/NotFound"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -33,6 +35,14 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+function RouteLoading() {
+  return (
+    <div className="flex h-screen items-center justify-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+    </div>
+  );
+}
 
 // Protected Route Component
 function ProtectedRoute({ children, roles }: { children: React.ReactNode; roles?: string[] }) {
@@ -105,7 +115,8 @@ const AppRoutes = () => (
       v7_relativeSplatPath: true,
     }}
   >
-    <Routes>
+    <Suspense fallback={<RouteLoading />}>
+      <Routes>
       {/* Public routes */}
       <Route
         path="/"
@@ -154,6 +165,11 @@ const AppRoutes = () => (
             <DLAADashboard />
           </ProtectedRoute>
         } />
+        <Route path="dlaa/review/:id" element={
+          <ProtectedRoute roles={['DLAA', 'SUPER_ADMIN', 'DNA']}>
+            <DLAAReview />
+          </ProtectedRoute>
+        } />
         <Route path="dlaa/issue/:id" element={
           <ProtectedRoute roles={['DLAA', 'SUPER_ADMIN', 'DNA']}>
             <LicenseIssue />
@@ -181,7 +197,8 @@ const AppRoutes = () => (
       </Route>
 
       <Route path="*" element={<NotFound />} />
-    </Routes>
+      </Routes>
+    </Suspense>
   </BrowserRouter>
 );
 

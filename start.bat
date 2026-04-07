@@ -28,20 +28,23 @@ if errorlevel 1 (
 REM Get script directory
 cd /d "%~dp0"
 
-echo %GREEN%🚀 Demarrage du Backend (localhost:3001)...%NC%
-start "AEROCHECK Backend" cmd /c "cd /d "%~dp0backend" && npm install --silent 2>nul && npm run dev"
+set "BACKEND_PORT=3501"
+set "FRONTEND_PORT=3502"
 
-echo %GREEN%🚀 Demarrage du Frontend (localhost:8080)...%NC%
+echo %GREEN%🚀 Demarrage du Backend (localhost:%BACKEND_PORT%)...%NC%
+start "AEROCHECK Backend" cmd /c "cd /d "%~dp0backend" && npm install --silent 2>nul && set PORT=%BACKEND_PORT% && npm run dev"
+
+echo %GREEN%🚀 Demarrage du Frontend (localhost:%FRONTEND_PORT%)...%NC%
 timeout /t 3 /nobreak >nul
-start "AEROCHECK Frontend" cmd /c "cd /d "%~dp0frontend" && npm install --silent 2>nul && npm run dev"
+start "AEROCHECK Frontend" cmd /c "cd /d "%~dp0frontend" && npm install --silent 2>nul && npm run dev -- --host 0.0.0.0 --port %FRONTEND_PORT%"
 
 echo.
 echo =========================================
 echo %GREEN%✅ Services demarres avec succes!%NC%
 echo =========================================
 echo.
-echo 📱 Frontend: %YELLOW%http://localhost:8080%NC%
-echo 🔌 Backend:   %YELLOW%http://localhost:3001%NC%
+echo 📱 Frontend: %YELLOW%http://localhost:%FRONTEND_PORT%%NC%
+echo 🔌 Backend:   %YELLOW%http://localhost:%BACKEND_PORT%%NC%
 echo.
 echo 💡 %YELLOW%Comptes de demo (mot de passe: password123):%NC%
 echo    • admin@aerocheck.com (Super Admin)

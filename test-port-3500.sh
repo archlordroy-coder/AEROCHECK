@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Script de test pour vérifier si le port 3500 est libre
+# Script de test pour vérifier si le port 3501 est libre
 # Usage: ./test-port-3500.sh
 
 set -e
 
-PORT=3500
+PORT=3501
 
 echo "=========================================="
 echo "Test de disponibilité du port $PORT"
@@ -56,12 +56,12 @@ if command -v pm2 &> /dev/null; then
         echo "Processus PM2 actifs:"
         echo "$PM2_LIST" | grep -E "(name|online|stopped)" || true
         
-        # Vérifier si un processus PM2 utilise le port 3500
+        # Vérifier si un processus PM2 utilise le port 3501
         PM2_ENV=$(pm2 env 2>/dev/null || true)
-        if echo "$PM2_ENV" | grep -q "PORT.*3500\|3500.*PORT"; then
-            echo -e "${YELLOW}⚠️  Un processus PM2 est configuré pour utiliser le port 3500${NC}"
+        if echo "$PM2_ENV" | grep -q "PORT.*3501\|3501.*PORT"; then
+            echo -e "${YELLOW}⚠️  Un processus PM2 est configuré pour utiliser le port 3501${NC}"
         else
-            echo -e "${GREEN}✅ Aucun processus PM2 n'utilise le port 3500${NC}"
+            echo -e "${GREEN}✅ Aucun processus PM2 n'utilise le port 3501${NC}"
         fi
     else
         echo -e "${GREEN}✅ Aucun processus PM2 actif${NC}"
@@ -151,6 +151,6 @@ else
     echo -e "${GREEN}✅ Port $PORT est LIBRE et disponible${NC}"
     echo ""
     echo "Vous pouvez utiliser ce port dans votre fichier .env:"
-    echo "  PORT=3500"
+    echo "  PORT=3501"
     exit 0
 fi

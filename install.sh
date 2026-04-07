@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 echo "========================================"
 echo "  AEROCHECK - Clean Install Script"
@@ -16,49 +16,42 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-echo -e "${YELLOW}[1/6]${NC} Suppression des node_modules..."
+echo -e "${YELLOW}[1/4]${NC} Suppression des node_modules..."
 rm -rf backend/node_modules
 rm -rf frontend/node_modules
-rm -rf client/node_modules
 rm -rf node_modules
 rm -rf backend/dist
 rm -rf frontend/dist
 echo -e "${GREEN}✓${NC} node_modules supprimés"
 
 echo ""
-echo -e "${YELLOW}[2/6]${NC} Installation des dépendances backend..."
+echo -e "${YELLOW}[2/5]${NC} Installation des dépendances backend..."
 cd backend
 npm install
 cd ..
 echo -e "${GREEN}✓${NC} Backend dependencies installées"
 
 echo ""
-echo -e "${YELLOW}[3/6]${NC} Installation des dépendances frontend..."
+echo -e "${YELLOW}[3/5]${NC} Installation des dépendances frontend..."
 cd frontend
 npm install
 cd ..
 echo -e "${GREEN}✓${NC} Frontend dependencies installées"
 
 echo ""
-echo -e "${YELLOW}[4/6]${NC} Génération du client Prisma..."
+echo -e "${YELLOW}[4/5]${NC} Initialisation du backend local..."
 cd backend
-npx prisma generate
+npm run db:init
 cd ..
-echo -e "${GREEN}✓${NC} Prisma client généré"
+echo -e "${GREEN}✓${NC} Backend local initialisé"
 
 echo ""
-echo -e "${YELLOW}[5/6]${NC} Reset de la base de données..."
-cd backend
-npx prisma db push --force-reset --accept-data-loss
+echo -e "${YELLOW}[5/5]${NC} Vérification rapide des builds..."
+npm run build:backend
+cd frontend
+npm run build
 cd ..
-echo -e "${GREEN}✓${NC} Base de données resetée"
-
-echo ""
-echo -e "${YELLOW}[6/6]${NC} Seed de la base de données..."
-cd backend
-npx prisma db seed
-cd ..
-echo -e "${GREEN}✓${NC} Base de données seedée"
+echo -e "${GREEN}✓${NC} Builds validés"
 
 echo ""
 echo "========================================"

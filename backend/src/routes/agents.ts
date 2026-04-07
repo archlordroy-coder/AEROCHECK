@@ -1,508 +1,370 @@
-import { Router, Response, NextFunction } from 'express';
-import { z } from 'zod';
-import { prisma } from '../index.js';
-import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
-import { AppError } from '../middleware/errorHandler.js';
+import express from 'express';
+import fs from 'fs';
+import multer from 'multer';
+import path from 'path';
+import { createId, enrichAgent, getAgentById, getAgentByUserId, getStore, getUserRecordById, getUserScopedAgent, listAgents, listLicenses, removeAgent, touch, upsertAgent } from '../db.js';
+import type { Document } from '../../shared/types/index.js';
+import { authenticate, type AuthRequest } from '../middleware/auth.js';
+import type { Agent } from '../../shared/types/index.js';
+import { asTrimmedString, parseBoolean, parsePositiveInt, parseStringArray, pickEnumValue } from '../utils/validators.js';
 
-const router = Router();
+const router = express.Router();
+const AGENT_STATUSES = ['EN_ATTENTE', 'DOCUMENTS_SOUMIS', 'QIP_VALIDE', 'QIP_REJETE', 'DLAA_DELIVRE', 'DLAA_REJETE', 'LICENCE_ACTIVE', 'LICENCE_EXPIREE', 'LICENCE_SUSPENDUE'] as const;
+const GRADES = ['STAGIAIRE', 'CADET', 'JUNIOR', 'SENIOR'] as const;
+const POSTES_ADMIN = ['CHEF_UNITE_ENF', 'ENA', 'QIP', 'CHARGE_EN_ROUTE', 'CHARGE_EXPLOITATION_NA', 'AUCUN'] as const;
+const SEXES = ['M', 'F'] as const;
+const LICENSE_STATUSES = ['VALIDE', 'EXPIREE', 'SUSPENDUE'] as const;
+const photoUploadRoot = path.resolve(process.cwd(), 'uploads', 'agents');
 
-const createAgentSchema = z.object({
-  matricule: z.string().min(3),
-  dateNaissance: z.string(),
-  lieuNaissance: z.string().min(2),
-  nationaliteId: z.string(),
-  adresse: z.string().min(5),
-  fonction: z.string().min(2),
-  grade: z.enum(['STAGIAIRE', 'CADET', 'JUNIOR', 'SENIOR']).optional(),
-  instructeur: z.boolean().default(false),
-  posteAdministratif: z.enum(['CHEF_UNITE_ENF', 'ENA', 'QIP', 'CHARGE_EN_ROUTE', 'CHARGE_EXPLOITATION_NA', 'AUCUN']).optional(),
-  employeurId: z.string(),
-  paysId: z.string(),
-  aeroportId: z.string(),
-  zoneAcces: z.array(z.string()).default([])
+fs.mkdirSync(photoUploadRoot, { recursive: true });
+
+const photoStorage = multer.diskStorage({
+  destination: (req, _file, cb) => {
+    const agentId = String(req.params.id || 'misc');
+    const target = path.join(photoUploadRoot, agentId);
+    fs.mkdirSync(target, { recursive: true });
+    cb(null, target);
+  },
+  filename: (_req, file, cb) => {
+    const extension = path.extname(file.originalname) || '.jpg';
+    cb(null, `photo-${Date.now()}${extension}`);
+  },
 });
 
-const updateAgentSchema = z.object({
-  matricule: z.string().min(3).optional(),
-  dateNaissance: z.string().optional(),
-  lieuNaissance: z.string().min(2).optional(),
-  nationaliteId: z.string().optional(),
-  adresse: z.string().min(5).optional(),
-  fonction: z.string().min(2).optional(),
-  employeurId: z.string().optional(),
-  paysId: z.string().optional(),
-  aeroportId: z.string().optional(),
-  zoneAcces: z.array(z.string()).default([]).optional(),
-  sexe: z.enum(['M', 'F']).optional(),
-  qualifications: z.array(z.string()).optional(),
-  grade: z.enum(['STAGIAIRE', 'CADET', 'JUNIOR', 'SENIOR']).optional(),
-  instructeur: z.boolean().optional(),
-  posteAdministratif: z.enum(['CHEF_UNITE_ENF', 'ENA', 'QIP', 'CHARGE_EN_ROUTE', 'CHARGE_EXPLOITATION_NA', 'AUCUN']).optional(),
-  licenseStatus: z.enum(['VALIDE', 'EXPIREE', 'SUSPENDUE']).optional(),
-  whatsapp: z.string().optional(),
-  photoUrl: z.string().optional()
+const photoUpload = multer({
+  storage: photoStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
 });
 
-// Generate unique matricule
-function generateMatricule(): string {
-  const year = new Date().getFullYear().toString().slice(-2);
-  const random = Math.floor(Math.random() * 100000).toString().padStart(5, '0');
-  return `AG${year}${random}`;
+function canAccessAgent(req: AuthRequest, agent: Agent): boolean {
+  if (!req.user) return false;
+  if (req.user.role === 'AGENT') {
+    return agent.userId === req.user.id;
+  }
+  return true;
 }
 
-// List agents
-router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
-  const { status, search, page = '1', limit = '10' } = req.query;
-  
-  const pageNum = parseInt(page as string);
-  const limitNum = parseInt(limit as string);
-  const skip = (pageNum - 1) * limitNum;
+function buildAgentInput(body: Record<string, unknown>, existing?: Agent) {
+  const payload: Partial<Agent> = {};
 
-  const where: any = {};
-  
+  if ('matricule' in body) payload.matricule = asTrimmedString(body.matricule);
+  if ('dateNaissance' in body) payload.dateNaissance = asTrimmedString(body.dateNaissance);
+  if ('lieuNaissance' in body) payload.lieuNaissance = asTrimmedString(body.lieuNaissance);
+  if ('nationaliteId' in body) payload.nationaliteId = asTrimmedString(body.nationaliteId);
+  if ('adresse' in body) payload.adresse = asTrimmedString(body.adresse);
+  if ('fonction' in body) payload.fonction = asTrimmedString(body.fonction);
+  if ('grade' in body) payload.grade = body.grade == null ? undefined : pickEnumValue(body.grade, GRADES);
+  if ('instructeur' in body) payload.instructeur = parseBoolean(body.instructeur);
+  if ('posteAdministratif' in body) payload.posteAdministratif = body.posteAdministratif == null ? undefined : pickEnumValue(body.posteAdministratif, POSTES_ADMIN);
+  if ('employeurId' in body) payload.employeurId = asTrimmedString(body.employeurId);
+  if ('paysId' in body) payload.paysId = asTrimmedString(body.paysId);
+  if ('aeroportId' in body) payload.aeroportId = asTrimmedString(body.aeroportId);
+  if ('zoneAcces' in body) payload.zoneAcces = parseStringArray(body.zoneAcces);
+  if ('status' in body) payload.status = pickEnumValue(body.status, AGENT_STATUSES);
+  if ('sexe' in body) payload.sexe = body.sexe == null ? undefined : pickEnumValue(body.sexe, SEXES);
+  if ('qualifications' in body) payload.qualifications = parseStringArray(body.qualifications);
+  if ('licenseStatus' in body) payload.licenseStatus = body.licenseStatus == null ? undefined : pickEnumValue(body.licenseStatus, LICENSE_STATUSES);
+  if ('whatsapp' in body) payload.whatsapp = body.whatsapp == null ? undefined : asTrimmedString(body.whatsapp);
+  if ('photoUrl' in body) payload.photoUrl = body.photoUrl == null ? undefined : asTrimmedString(body.photoUrl);
+  if ('emailVerified' in body) payload.emailVerified = parseBoolean(body.emailVerified);
+
+  const requiredFields: Array<keyof Agent> = [
+    'matricule',
+    'dateNaissance',
+    'lieuNaissance',
+    'nationaliteId',
+    'adresse',
+    'fonction',
+    'employeurId',
+    'paysId',
+    'aeroportId',
+  ];
+
+  for (const field of requiredFields) {
+    if (!existing && !payload[field]) {
+      return { error: `Le champ ${field} est requis` as const };
+    }
+  }
+
+  if ('grade' in body && body.grade != null && !payload.grade) return { error: 'Grade invalide' as const };
+  if ('instructeur' in body && payload.instructeur === undefined) return { error: 'Valeur instructeur invalide' as const };
+  if ('posteAdministratif' in body && body.posteAdministratif != null && !payload.posteAdministratif) return { error: 'Poste administratif invalide' as const };
+  if ('status' in body && !payload.status) return { error: 'Statut agent invalide' as const };
+  if ('sexe' in body && body.sexe != null && !payload.sexe) return { error: 'Sexe invalide' as const };
+  if ('zoneAcces' in body && !payload.zoneAcces) return { error: 'Zone acces invalide' as const };
+  if ('qualifications' in body && !payload.qualifications) return { error: 'Qualifications invalides' as const };
+  if ('licenseStatus' in body && body.licenseStatus != null && !payload.licenseStatus) return { error: 'Statut de licence invalide' as const };
+  if ('emailVerified' in body && payload.emailVerified === undefined) return { error: 'Valeur emailVerified invalide' as const };
+
+  return { payload };
+}
+
+router.get('/', authenticate, (req: AuthRequest, res) => {
+  const { status, search, page = '1', limit = '20' } = req.query as Record<string, string>;
+  const scopedAgent = req.user ? getUserScopedAgent(req.user.id, req.user.role) : undefined;
+
+  let items = listAgents();
+  if (scopedAgent) {
+    items = items.filter((agent) => agent.id === scopedAgent.id);
+  }
+
   if (status) {
-    where.status = status;
+    items = items.filter((agent) => agent.status === status);
   }
-  
+
   if (search) {
-    where.OR = [
-      { matricule: { contains: search as string } },
-      { user: { firstName: { contains: search as string } } },
-      { user: { lastName: { contains: search as string } } }
-    ];
+    const needle = search.toLowerCase();
+    items = items.filter((agent) => {
+      const user = getUserRecordById(agent.userId);
+      return (
+        agent.matricule.toLowerCase().includes(needle) ||
+        `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.toLowerCase().includes(needle)
+      );
+    });
   }
 
-  // If user is an agent, only show their own profile
-  if (req.user!.role === 'AGENT') {
-    where.userId = req.user!.id;
+  if (status && !pickEnumValue(status, AGENT_STATUSES)) {
+    res.status(400).json({ success: false, error: 'Statut agent invalide' });
+    return;
   }
 
-  const [agents, total] = await Promise.all([
-    prisma.agent.findMany({
-      where,
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-            phone: true,
-            role: true
-          }
-        },
-        documents: true,
-        licenses: true
-      },
-      skip,
-      take: limitNum,
-      orderBy: { createdAt: 'desc' }
-    }),
-    prisma.agent.count({ where })
-  ]);
+  const currentPage = parsePositiveInt(page, 1);
+  const perPage = parsePositiveInt(limit, 20);
+  const total = items.length;
+  const paged = items.slice((currentPage - 1) * perPage, currentPage * perPage).map(enrichAgent);
 
   res.json({
     success: true,
-    data: agents,
+    data: paged,
     total,
-    page: pageNum,
-    limit: limitNum,
-    totalPages: Math.ceil(total / limitNum)
+    page: currentPage,
+    limit: perPage,
+    totalPages: Math.max(1, Math.ceil(total / perPage)),
   });
 });
 
-// Get agents with document stats by country (for QIP) or airport (for DLAA)
-router.get('/with-doc-stats', authenticate, async (req: AuthRequest, res: Response) => {
-  const user = req.user!;
-  
-  let where: any = {};
-  
-  // SUPER_ADMIN: see all agents (no filter)
-  if (user.role === 'SUPER_ADMIN') {
-    // No filter applied - sees all agents
-  }
-  // QIP: agents from their country (RELAXED FOR TEST: see all)
-  else if (user.role === 'QIP') {
-    // const countryAirportPrefix = user.pays === 'SENEGAL' ? 'DAKAR' : 'ABIDJAN';
-    // where.aeroport = { startsWith: countryAirportPrefix };
-    // Relaxed for test
-  }
-  
-  // DLAA: agents from their airport (RELAXED FOR TEST: see all)
-  else if (user.role === 'DLAA') {
-    // where.aeroport = user.aeroport;
-    // Relaxed for test
-  }
-  
-  // AGENT: only themselves
-  else if (user.role === 'AGENT') {
-    where.userId = user.id;
+router.get('/with-doc-stats', authenticate, (req: AuthRequest, res) => {
+  let items = listAgents();
+  if (req.user?.role === 'AGENT') {
+    const ownAgent = getAgentByUserId(req.user.id);
+    items = ownAgent ? [ownAgent] : [];
   }
 
-  const agents = await prisma.agent.findMany({
-    where,
-    include: {
-      user: {
-        select: { firstName: true, lastName: true, email: true }
-      },
-      aeroport: {
-        select: { nom: true, code: true }
-      },
-      documents: {
-        select: { id: true, status: true, type: true }
-      },
-      _count: {
-        select: { documents: true }
-      }
-    },
-    orderBy: { createdAt: 'desc' }
-  });
-
-  // Calculate stats for each agent
-  const agentsWithStats = agents.map(agent => {
-    const totalDocs = agent.documents.length;
-    const validatedDocs = agent.documents.filter(d => d.status === 'VALIDE').length;
-    const pendingDocs = agent.documents.filter(d => d.status === 'EN_ATTENTE').length;
-    const rejectedDocs = agent.documents.filter(d => d.status === 'REJETE').length;
-    
+  const data = items.map((agent) => {
+    const full = enrichAgent(agent);
     return {
-      id: agent.id,
-      matricule: agent.matricule,
-      firstName: agent.user.firstName,
-      lastName: agent.user.lastName,
-      email: agent.user.email,
-      aeroport: agent.aeroport?.nom ?? agent.aeroport?.code ?? '',
-      status: agent.status,
+      id: full.id,
+      matricule: full.matricule,
+      firstName: full.user?.firstName ?? '',
+      lastName: full.user?.lastName ?? '',
+      email: full.user?.email ?? '',
+      aeroport: full.aeroport?.nom ?? full.aeroportId,
+      pays: full.pays?.nomFr ?? full.pays?.nom ?? full.paysId,
+      status: full.status,
       documentStats: {
-        total: totalDocs,
-        validated: validatedDocs,
-        pending: pendingDocs,
-        rejected: rejectedDocs
-      }
-    };
-  });
-
-  res.json({
-    success: true,
-    data: agentsWithStats,
-    total: agentsWithStats.length
-  });
-});
-
-// Get single agent
-router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next) => {
-  try {
-    const agent = await prisma.agent.findUnique({
-      where: { id: req.params.id },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-            phone: true,
-            role: true
-          }
-        },
-        documents: {
-          include: {
-            validations: {
-              include: {
-                validator: {
-                  select: { firstName: true, lastName: true, role: true }
-                }
-              }
-            }
-          }
-        },
-        licenses: true
-      }
-    });
-
-    if (!agent) {
-      throw new AppError('Agent non trouve', 404);
-    }
-
-    // Check access
-    if (req.user!.role === 'AGENT' && agent.userId !== req.user!.id) {
-      throw new AppError('Acces refuse', 403);
-    }
-
-    res.json({ success: true, data: agent });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Create agent
-router.post('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    const data = createAgentSchema.parse(req.body);
-    const userId = req.user!.id;
-
-    // Check if user already has an agent profile
-    const existingAgent = await prisma.agent.findUnique({
-      where: { userId }
-    });
-
-    if (existingAgent) {
-      throw new AppError('Profil agent deja existant', 400);
-    }
-
-    // Check if matricule is unique
-    const existingMatricule = await prisma.agent.findUnique({
-      where: { matricule: data.matricule }
-    });
-
-    if (existingMatricule) {
-      throw new AppError('Ce matricule est deja utilise', 400);
-    }
-
-    // Verify that referenced entities exist
-    const [nationalite, employeur, pays, aeroport] = await Promise.all([
-      prisma.nationalite.findUnique({ where: { id: data.nationaliteId } }),
-      prisma.employeur.findUnique({ where: { id: data.employeurId } }),
-      prisma.pays.findUnique({ where: { id: data.paysId } }),
-      prisma.aeroport.findUnique({ where: { id: data.aeroportId } })
-    ]);
-
-    if (!nationalite) throw new AppError('Nationalite invalide', 400);
-    if (!employeur) throw new AppError('Employeur invalide', 400);
-    if (!pays) throw new AppError('Pays invalide', 400);
-    if (!aeroport) throw new AppError('Aeroport invalide', 400);
-
-    // Verify that airport belongs to selected country
-    if (aeroport.paysId !== pays.id) {
-      throw new AppError('L\'aeroport selectionne n\'appartient pas au pays choisi', 400);
-    }
-
-    const agent = await prisma.agent.create({
-      data: {
-        userId,
-        matricule: data.matricule,
-        dateNaissance: new Date(data.dateNaissance),
-        lieuNaissance: data.lieuNaissance,
-        nationaliteId: data.nationaliteId,
-        adresse: data.adresse,
-        fonction: data.fonction,
-        grade: data.grade,
-        instructeur: data.instructeur ?? false,
-        posteAdministratif: data.posteAdministratif ?? 'AUCUN',
-        employeurId: data.employeurId,
-        paysId: data.paysId,
-        aeroportId: data.aeroportId,
-        zoneAcces: JSON.stringify(data.zoneAcces || []),
-        status: 'EN_ATTENTE'
+        total: full.documents?.length ?? 0,
+        validated: full.documents?.filter((item: NonNullable<typeof full.documents>[number]) => item.status === 'VALIDE').length ?? 0,
+        pending: full.documents?.filter((item: NonNullable<typeof full.documents>[number]) => item.status === 'EN_ATTENTE').length ?? 0,
+        rejected: full.documents?.filter((item: NonNullable<typeof full.documents>[number]) => item.status === 'REJETE').length ?? 0,
       },
-      include: {
-        user: {
-          select: { firstName: true, lastName: true, email: true }
-        },
-        nationalite: true,
-        employeur: true,
-        pays: true,
-        aeroport: { include: { pays: true } }
-      }
-    });
-
-    res.status(201).json({
-      success: true,
-      data: agent,
-      message: 'Profil agent cree avec succes'
-    });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      res.status(400).json({
-        success: false,
-        error: error.errors[0].message
-      });
-      return;
-    }
-    next(error);
-  }
-});
-
-// Update agent
-router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next) => {
-  try {
-    const agent = await prisma.agent.findUnique({
-      where: { id: req.params.id }
-    });
-
-    if (!agent) {
-      throw new AppError('Agent non trouve', 404);
-    }
-
-    // Only owner or admin can update
-    if (req.user!.role === 'AGENT' && agent.userId !== req.user!.id) {
-      throw new AppError('Acces refuse', 403);
-    }
-
-    const data = updateAgentSchema.parse(req.body);
-
-    // Build update data with proper type handling
-    const updateData: any = {};
-    if (data.matricule) updateData.matricule = data.matricule;
-    if (data.dateNaissance) updateData.dateNaissance = new Date(data.dateNaissance);
-    if (data.lieuNaissance) updateData.lieuNaissance = data.lieuNaissance;
-    if (data.nationaliteId) updateData.nationaliteId = data.nationaliteId;
-    if (data.adresse) updateData.adresse = data.adresse;
-    if (data.fonction) updateData.fonction = data.fonction;
-    if (data.grade) updateData.grade = data.grade;
-    if (typeof data.instructeur === 'boolean') updateData.instructeur = data.instructeur;
-    if (data.posteAdministratif) updateData.posteAdministratif = data.posteAdministratif;
-    if (data.employeurId) updateData.employeurId = data.employeurId;
-    if (data.paysId) updateData.paysId = data.paysId;
-    if (data.aeroportId) updateData.aeroportId = data.aeroportId;
-    if (data.zoneAcces) updateData.zoneAcces = JSON.stringify(data.zoneAcces);
-    if (data.sexe) updateData.sexe = data.sexe;
-    if (data.qualifications) updateData.qualifications = JSON.stringify(data.qualifications);
-    if (data.licenseStatus) updateData.licenseStatus = data.licenseStatus;
-    if (data.whatsapp) updateData.whatsapp = data.whatsapp;
-    if (data.photoUrl) updateData.photoUrl = data.photoUrl;
-
-    const updated = await prisma.agent.update({
-      where: { id: req.params.id },
-      data: updateData,
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true
-          }
-        }
-      }
-    });
-
-    res.json({ success: true, data: updated });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      res.status(400).json({ 
-        success: false, 
-        error: error.errors[0].message 
-      });
-      return;
-    }
-    next(error);
-  }
-});
-
-// Update agent status (QIP/DLAA/ADMIN only)
-router.patch(
-  '/:id/status',
-  authenticate,
-  authorize('QIP', 'DLAA', 'DNA', 'SUPER_ADMIN'),
-  async (req: AuthRequest, res: Response, next) => {
-    try {
-      const { status } = req.body;
-
-      if (!status) {
-        throw new AppError('Statut requis', 400);
-      }
-
-      const agent = await prisma.agent.update({
-        where: { id: req.params.id },
-        data: { status }
-      });
-
-      res.json({ success: true, data: agent });
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-
-// Get agent licenses
-router.get('/:id/licenses', authenticate, async (req: AuthRequest, res: Response, next) => {
-  try {
-    const agent = await prisma.agent.findUnique({
-      where: { id: req.params.id }
-    });
-
-    if (!agent) {
-      throw new AppError('Agent non trouve', 404);
-    }
-
-    // Only owner or authorized roles can view licenses
-    if (req.user!.role === 'AGENT' && agent.userId !== req.user!.id) {
-      throw new AppError('Acces refuse', 403);
-    }
-
-    const licenses = await prisma.license.findMany({
-      where: { agentId: req.params.id },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    res.json({ success: true, data: licenses });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Get agent photo
-router.get('/:id/photo', async (req: AuthRequest, res: Response, next) => {
-  try {
-    const agent = await prisma.agent.findUnique({
-      where: { id: req.params.id }
-    });
-
-    if (!agent) {
-      throw new AppError('Agent non trouve', 404);
-    }
-
-    if (!agent.photoUrl) {
-      throw new AppError('Photo non disponible', 404);
-    }
-
-    // Import path and fs
-    const path = await import('path');
-    const fs = await import('fs');
-    
-    const filePath = path.join(process.cwd(), agent.photoUrl.startsWith('/') ? agent.photoUrl.substring(1) : agent.photoUrl);
-    
-    if (!fs.existsSync(filePath)) {
-      throw new AppError('Fichier photo non trouve', 404);
-    }
-
-    // Determine content type
-    const ext = path.extname(filePath).toLowerCase();
-    const contentTypeMap: Record<string, string> = {
-      '.jpg': 'image/jpeg',
-      '.jpeg': 'image/jpeg',
-      '.png': 'image/png',
-      '.gif': 'image/gif'
     };
-    const contentType = contentTypeMap[ext] || 'image/jpeg';
+  });
 
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', 'inline');
-    
-    const stream = fs.createReadStream(filePath);
-    stream.pipe(res);
-  } catch (error) {
-    next(error);
-  }
+  res.json({ success: true, data });
 });
 
-// Delete agent (ADMIN only)
-router.delete(
-  '/:id',
-  authenticate,
-  authorize('SUPER_ADMIN'),
-  async (req: AuthRequest, res: Response, next) => {
-    try {
-      await prisma.agent.delete({
-        where: { id: req.params.id }
-      });
-
-      res.json({ success: true, message: 'Agent supprime' });
-    } catch (error) {
-      next(error);
-    }
+router.get('/:id/photo', authenticate, (req, res) => {
+  const agent = getAgentById(req.params.id);
+  if (!agent) {
+    res.status(404).json({ success: false, error: 'Agent introuvable' });
+    return;
   }
-);
+
+  if (!canAccessAgent(req as AuthRequest, agent)) {
+    res.status(403).json({ success: false, error: 'Acces refuse a cette photo' });
+    return;
+  }
+
+  if (agent.photoUrl) {
+    res.sendFile(path.resolve(process.cwd(), agent.photoUrl.replace(/^\/+/, '')));
+    return;
+  }
+
+  const photo = getStore().documents.find((document: Document) => document.agentId === agent.id && document.type === 'PHOTO_IDENTITE');
+  if (!photo) {
+    res.status(404).json({ success: false, error: 'Photo introuvable' });
+    return;
+  }
+
+  res.sendFile(path.resolve(process.cwd(), photo.filePath));
+});
+
+router.post('/:id/photo', authenticate, photoUpload.single('photo'), (req: AuthRequest, res) => {
+  const agent = getAgentById(req.params.id);
+  if (!agent) {
+    res.status(404).json({ success: false, error: 'Agent introuvable' });
+    return;
+  }
+
+  if (!canAccessAgent(req, agent)) {
+    res.status(403).json({ success: false, error: 'Acces refuse a cet agent' });
+    return;
+  }
+
+  if (!req.file) {
+    res.status(400).json({ success: false, error: 'Aucun fichier photo recu' });
+    return;
+  }
+
+  const nextPhotoUrl = `/uploads/agents/${agent.id}/${req.file.filename}`;
+  const updatedAgent = upsertAgent(touch({ ...agent, photoUrl: nextPhotoUrl }));
+  res.status(201).json({ success: true, data: enrichAgent(updatedAgent) });
+});
+
+router.get('/:id/licenses', authenticate, (req, res) => {
+  const agent = getAgentById(req.params.id);
+  if (!agent) {
+    res.status(404).json({ success: false, error: 'Agent introuvable' });
+    return;
+  }
+
+  if (!canAccessAgent(req as AuthRequest, agent)) {
+    res.status(403).json({ success: false, error: 'Acces refuse a ces licences' });
+    return;
+  }
+
+  const items = listLicenses().filter((license) => license.agentId === req.params.id);
+  res.json({ success: true, data: items });
+});
+
+router.get('/:id', authenticate, (req: AuthRequest, res) => {
+  const agent = getAgentById(req.params.id);
+  if (!agent) {
+    res.status(404).json({ success: false, error: 'Agent introuvable' });
+    return;
+  }
+
+  if (!canAccessAgent(req, agent)) {
+    res.status(403).json({ success: false, error: 'Acces refuse a cet agent' });
+    return;
+  }
+
+  res.json({ success: true, data: enrichAgent(agent) });
+});
+
+router.post('/', authenticate, (req: AuthRequest, res) => {
+  if (!req.user) {
+    res.status(401).json({ success: false, error: 'Non authentifie' });
+    return;
+  }
+
+  const targetUserId = req.user.role === 'AGENT'
+    ? req.user.id
+    : asTrimmedString(req.body?.userId) ?? req.user.id;
+  const existingAgent = getAgentByUserId(targetUserId);
+  if (existingAgent) {
+    res.status(409).json({ success: false, error: 'Un agent existe deja pour cet utilisateur' });
+    return;
+  }
+
+  const parsed = buildAgentInput(req.body ?? {});
+  if ('error' in parsed) {
+    res.status(400).json({ success: false, error: parsed.error });
+    return;
+  }
+
+  const agent: Agent = {
+    id: createId('agent'),
+    userId: targetUserId,
+    matricule: parsed.payload.matricule!,
+    dateNaissance: parsed.payload.dateNaissance!,
+    lieuNaissance: parsed.payload.lieuNaissance!,
+    nationaliteId: parsed.payload.nationaliteId!,
+    adresse: parsed.payload.adresse!,
+    fonction: parsed.payload.fonction!,
+    grade: parsed.payload.grade,
+    instructeur: parsed.payload.instructeur ?? false,
+    posteAdministratif: parsed.payload.posteAdministratif ?? 'AUCUN',
+    employeurId: parsed.payload.employeurId!,
+    paysId: parsed.payload.paysId!,
+    aeroportId: parsed.payload.aeroportId!,
+    zoneAcces: parsed.payload.zoneAcces ?? [],
+    status: 'EN_ATTENTE',
+    sexe: parsed.payload.sexe,
+    qualifications: parsed.payload.qualifications ?? [],
+    licenseStatus: parsed.payload.licenseStatus,
+    whatsapp: parsed.payload.whatsapp,
+    photoUrl: parsed.payload.photoUrl,
+    emailVerified: parsed.payload.emailVerified ?? false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  upsertAgent(agent);
+  res.status(201).json({ success: true, data: enrichAgent(agent) });
+});
+
+router.put('/:id', authenticate, (req: AuthRequest, res) => {
+  const agent = getAgentById(req.params.id);
+  if (!agent) {
+    res.status(404).json({ success: false, error: 'Agent introuvable' });
+    return;
+  }
+
+  if (!canAccessAgent(req, agent)) {
+    res.status(403).json({ success: false, error: 'Acces refuse a cet agent' });
+    return;
+  }
+
+  const parsed = buildAgentInput(req.body ?? {}, agent);
+  if ('error' in parsed) {
+    res.status(400).json({ success: false, error: parsed.error });
+    return;
+  }
+
+  const nextAgent = upsertAgent(touch({ ...agent, ...parsed.payload }));
+  res.json({ success: true, data: enrichAgent(nextAgent) });
+});
+
+router.patch('/:id/status', authenticate, (req: AuthRequest, res) => {
+  const agent = getAgentById(req.params.id);
+  if (!agent) {
+    res.status(404).json({ success: false, error: 'Agent introuvable' });
+    return;
+  }
+
+  if (!canAccessAgent(req, agent)) {
+    res.status(403).json({ success: false, error: 'Acces refuse a cet agent' });
+    return;
+  }
+
+  const status = pickEnumValue(req.body?.status, AGENT_STATUSES);
+  if (!status) {
+    res.status(400).json({ success: false, error: 'Statut agent invalide' });
+    return;
+  }
+
+  const nextAgent = upsertAgent(touch({ ...agent, status }));
+  res.json({ success: true, data: enrichAgent(nextAgent) });
+});
+
+router.delete('/:id', authenticate, (req: AuthRequest, res) => {
+  const agent = getAgentById(req.params.id);
+  if (!agent) {
+    res.status(404).json({ success: false, error: 'Agent introuvable' });
+    return;
+  }
+
+  if (!canAccessAgent(req, agent)) {
+    res.status(403).json({ success: false, error: 'Acces refuse a cet agent' });
+    return;
+  }
+
+  if (!removeAgent(req.params.id)) {
+    res.status(404).json({ success: false, error: 'Agent introuvable' });
+    return;
+  }
+  res.json({ success: true, data: undefined });
+});
 
 export default router;

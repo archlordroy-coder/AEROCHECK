@@ -1,686 +1,408 @@
-import { Router, Response } from 'express';
-import { z } from 'zod';
-import path from 'path';
+import express from 'express';
 import fs from 'fs';
 import multer from 'multer';
-import { prisma } from '../index.js';
-import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
-import { AppError } from '../middleware/errorHandler.js';
+import path from 'path';
+import { addDocument, createId, enrichAgent, getAgentById, getDocumentById, getStore, removeDocument, saveDocument, touch, updateAgentDerivedStatus } from '../db.js';
+import { authenticate, type AuthRequest } from '../middleware/auth.js';
+import type { Agent, Document, DocStatus } from '../../shared/types/index.js';
+import { asTrimmedString, isValidDateInput, parsePositiveInt, pickEnumValue } from '../utils/validators.js';
 
-const router = Router();
-
-// File upload directory
-const DOCUMENTS_UPLOAD_DIR = path.join(process.cwd(), 'uploads', 'documents');
-
-// Ensure upload directory exists
-if (!fs.existsSync(DOCUMENTS_UPLOAD_DIR)) {
-  fs.mkdirSync(DOCUMENTS_UPLOAD_DIR, { recursive: true });
+function parseEnglishLevel(value: unknown): 4 | 5 | 6 | undefined {
+  const level = Number(value);
+  if (level === 4 || level === 5 || level === 6) {
+    return level;
+  }
+  return undefined;
 }
 
-// Multer storage configuration
+const router = express.Router();
+const DOCUMENT_TYPES = ['CERTIFICAT_MEDICAL', 'CONTROLE_COMPETENCE', 'NIVEAU_ANGLAIS', 'JUSTIFICATIF_NOMINATION'] as const;
+const DOCUMENT_STATUSES = ['EN_ATTENTE', 'VALIDE', 'REJETE', 'EXPIRE'] as const;
+const VALIDATION_STATUSES = ['VALIDE', 'REJETE'] as const;
+
+const uploadRoot = path.resolve(process.cwd(), 'uploads', 'documents');
+fs.mkdirSync(uploadRoot, { recursive: true });
+
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const agentId = req.body.agentId || 'temp';
-    const agentDir = path.join(DOCUMENTS_UPLOAD_DIR, agentId);
-    if (!fs.existsSync(agentDir)) {
-      fs.mkdirSync(agentDir, { recursive: true });
-    }
-    cb(null, agentDir);
+  destination: (req, _file, cb) => {
+    const agentId = String(req.body.agentId || 'misc');
+    const target = path.join(uploadRoot, agentId);
+    fs.mkdirSync(target, { recursive: true });
+    cb(null, target);
   },
-  filename: (req, file, cb) => {
-    const docType = req.body.type || 'DOCUMENT';
-    const timestamp = Date.now();
-    const ext = path.extname(file.originalname) || '.pdf';
-    cb(null, `${docType.toLowerCase()}_${timestamp}${ext}`);
-  }
+  filename: (_req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname.replace(/\s+/g, '-')}`);
+  },
 });
 
-// Multer upload middleware
-const upload = multer({
-  storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = ['.pdf', '.jpg', '.jpeg', '.png', '.gif'];
-    const ext = path.extname(file.originalname).toLowerCase();
-    if (allowedTypes.includes(ext)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Type de fichier non autorisé. Utilisez PDF, JPG, PNG ou GIF'));
+const upload = multer({ storage });
+
+function canAccessDocument(req: AuthRequest, document: Document): boolean {
+  if (!req.user) return false;
+  if (req.user.role !== 'AGENT') return true;
+  const agent = getAgentById(document.agentId);
+  return agent?.userId === req.user.id;
+}
+
+function canModerateDocument(req: AuthRequest): boolean {
+  return req.user?.role === 'QIP' || req.user?.role === 'DLAA' || req.user?.role === 'DNA' || req.user?.role === 'SUPER_ADMIN';
+}
+
+function safelyDeleteUploadedFile(filePath?: string) {
+  if (!filePath) return;
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+  }
+}
+
+function requiresJustificatif(agent: Pick<Agent, 'instructeur' | 'posteAdministratif'>): boolean {
+  return Boolean(agent.instructeur || (agent.posteAdministratif && agent.posteAdministratif !== 'AUCUN'));
+}
+
+function getRelevantDocuments(agentId?: string) {
+  const base = getStore().documents;
+  return agentId ? base.filter((document) => document.agentId === agentId) : base;
+}
+
+function computeDocumentExpiry(agent: Agent, type: typeof DOCUMENT_TYPES[number], issuedAt: string, englishLevel?: 4 | 5 | 6) {
+  const issuedDate = new Date(issuedAt);
+  let expiresAt: string | undefined;
+
+  if (type === 'CERTIFICAT_MEDICAL') {
+    const birthDate = new Date(agent.dateNaissance);
+    const age = issuedDate.getFullYear() - birthDate.getFullYear() - (
+      issuedDate.getMonth() < birthDate.getMonth() ||
+      (issuedDate.getMonth() === birthDate.getMonth() && issuedDate.getDate() < birthDate.getDate())
+        ? 1
+        : 0
+    );
+    const validityYears = age < 40 ? 2 : 1;
+    expiresAt = new Date(issuedDate.setFullYear(issuedDate.getFullYear() + validityYears)).toISOString().slice(0, 10);
+  }
+
+  if (type === 'CONTROLE_COMPETENCE') {
+    const expiry = new Date(issuedAt);
+    expiry.setFullYear(expiry.getFullYear() + 2);
+    expiresAt = expiry.toISOString().slice(0, 10);
+  }
+
+  if (type === 'NIVEAU_ANGLAIS') {
+    if (englishLevel === 4) {
+      const expiry = new Date(issuedAt);
+      expiry.setFullYear(expiry.getFullYear() + 3);
+      expiresAt = expiry.toISOString().slice(0, 10);
     }
-  }
-});
-
-const createDocumentSchema = z.object({
-  agentId: z.string(),
-  type: z.enum([
-    'CERTIFICAT_MEDICAL',
-    'CONTROLE_COMPETENCE',
-    'NIVEAU_ANGLAIS',
-    'JUSTIFICATIF_NOMINATION',
-    'PHOTO_IDENTITE'
-  ]),
-  issuedAt: z.coerce.date(),
-  englishLevel: z.coerce.number().int().min(4).max(6).optional()
-});
-
-const validateDocumentSchema = z.object({
-  status: z.enum(['VALIDE', 'REJETE']),
-  comment: z.string().optional()
-});
-
-// List documents - with role-based filtering
-router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
-  const { agentId, status, type, page = '1', limit = '10' } = req.query;
-  
-  const pageNum = parseInt(page as string);
-  const limitNum = parseInt(limit as string);
-  const skip = (pageNum - 1) * limitNum;
-
-  const user = req.user!;
-  let where: any = {};
-  
-  if (agentId) where.agentId = agentId;
-  if (status) where.status = status;
-  if (type) where.type = type;
-
-  // QIP: see EN_ATTENTE documents from agents in their country (RELAXED FOR TEST: see all)
-  if (user.role === 'QIP') {
-    where.status = 'EN_ATTENTE';
-    /* Relaxed for test
-    const agents = await prisma.agent.findMany({
-      where: { 
-        pays: { code: user.pays === 'SENEGAL' ? 'SN' : 'CI' }
-      },
-      select: { id: true }
-    });
-    if (agents.length > 0) {
-      where.agentId = { in: agents.map(a => a.id) };
+    if (englishLevel === 5) {
+      const expiry = new Date(issuedAt);
+      expiry.setFullYear(expiry.getFullYear() + 6);
+      expiresAt = expiry.toISOString().slice(0, 10);
     }
-    */
-  }
-
-  // DLAA: see documents from their airport (RELAXED FOR TEST: see all)
-  if (user.role === 'DLAA') {
-    /* Relaxed for test
-    const agents = await prisma.agent.findMany({
-      where: { aeroportId: user.aeroportId },
-      select: { id: true }
-    });
-    if (agents.length > 0) {
-      where.agentId = { in: agents.map(a => a.id) };
-    }
-    */
-  }
-
-  // Agents can only see their own documents
-  if (user.role === 'AGENT') {
-    const agent = await prisma.agent.findUnique({
-      where: { userId: user.id }
-    });
-    if (agent) {
-      where.agentId = agent.id;
-    } else {
-      res.json({ success: true, data: [], total: 0, page: pageNum, limit: limitNum, totalPages: 0 });
-      return;
+    if (englishLevel === 6) {
+      expiresAt = undefined;
     }
   }
 
-  const [documents, total] = await Promise.all([
-    prisma.document.findMany({
-      where,
-      include: {
-        agent: {
-          include: {
-            user: {
-              select: { firstName: true, lastName: true, email: true }
-            }
-          }
-        },
-        validations: {
-          include: {
-            validator: {
-              select: { firstName: true, lastName: true, role: true }
-            }
-          },
-          orderBy: { createdAt: 'desc' }
-        }
-      },
-      skip,
-      take: limitNum,
-      orderBy: { createdAt: 'desc' }
-    }),
-    prisma.document.count({ where })
-  ]);
+  if (type === 'JUSTIFICATIF_NOMINATION') {
+    expiresAt = undefined;
+  }
+
+  return expiresAt;
+}
+
+function getResolvedDocument(document: Document): Document {
+  if (!document.expiresAt) {
+    return document;
+  }
+
+  const isExpired = new Date(document.expiresAt) < new Date();
+  if (!isExpired || document.status === 'REJETE' || document.status === 'EXPIRE') {
+    return document;
+  }
+
+  return saveDocument(touch({ ...document, status: 'EXPIRE' }));
+}
+
+router.get('/', authenticate, (req, res) => {
+  const { agentId, status, type, page = '1', limit = '20' } = req.query as Record<string, string>;
+  let items: Document[] = getRelevantDocuments().map(getResolvedDocument);
+
+  if (status && !pickEnumValue(status, DOCUMENT_STATUSES)) {
+    res.status(400).json({ success: false, error: 'Statut document invalide' });
+    return;
+  }
+
+  if (type && !pickEnumValue(type, DOCUMENT_TYPES)) {
+    res.status(400).json({ success: false, error: 'Type de document invalide' });
+    return;
+  }
+
+  if (agentId) items = items.filter((document: Document) => document.agentId === agentId);
+  if (status) items = items.filter((document: Document) => document.status === status);
+  if (type) items = items.filter((document: Document) => document.type === type);
+
+  const currentPage = parsePositiveInt(page, 1);
+  const perPage = parsePositiveInt(limit, 20);
+  const total = items.length;
+  const data = items
+    .slice((currentPage - 1) * perPage, currentPage * perPage)
+    .map((document: Document) => ({
+      ...document,
+      agent: getAgentById(document.agentId) ? enrichAgent(getAgentById(document.agentId)!) : undefined,
+    }));
 
   res.json({
     success: true,
-    data: documents,
+    data,
     total,
-    page: pageNum,
-    limit: limitNum,
-    totalPages: Math.ceil(total / limitNum)
+    page: currentPage,
+    limit: perPage,
+    totalPages: Math.max(1, Math.ceil(total / perPage)),
   });
 });
 
-// Get single document
-router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next) => {
-  try {
-    const document = await prisma.document.findUnique({
-      where: { id: req.params.id },
-      include: {
-        agent: {
-          include: {
-            user: {
-              select: { firstName: true, lastName: true, email: true }
-            }
-          }
-        },
-        validations: {
-          include: {
-            validator: {
-              select: { firstName: true, lastName: true, role: true }
-            }
-          },
-          orderBy: { createdAt: 'desc' }
-        }
-      }
+router.get('/pending', authenticate, (req: AuthRequest, res) => {
+  const data = getStore().agents
+    .map((agent) => enrichAgent(agent))
+    .map((agent) => ({
+      ...agent,
+      documents: (agent.documents ?? []).map(getResolvedDocument),
+    }))
+    .filter((agent) => (agent.documents?.length ?? 0) > 0)
+    .filter((agent) => {
+      if (req.user?.role !== 'AGENT') return true;
+      return agent.userId === req.user.id;
+    })
+    .map((agent) => {
+      const total = agent.documents?.length ?? 0;
+      const validated = agent.documents?.filter((document) => document.status === 'VALIDE').length ?? 0;
+      const pending = agent.documents?.filter((document) => document.status === 'EN_ATTENTE').length ?? 0;
+      return {
+        id: agent.id,
+        matricule: agent.matricule,
+        firstName: agent.user?.firstName ?? '',
+        lastName: agent.user?.lastName ?? '',
+        airport: agent.aeroport?.nom ?? agent.aeroportId,
+        fonction: agent.fonction,
+        submittedAt: agent.updatedAt,
+        documentCount: total,
+        verifiedCount: validated,
+        status: validated === total && total > 0 ? 'ready' : pending === total ? 'pending' : 'in_progress',
+      };
     });
 
-    if (!document) {
-      throw new AppError('Document non trouve', 404);
-    }
-
-    res.json({ success: true, data: document });
-  } catch (error) {
-    next(error);
-  }
+  res.json({ success: true, data });
 });
 
-// Submit document with file upload using multer
-router.post('/', authenticate, upload.single('file'), async (req: AuthRequest, res: Response, next) => {
-  try {
-    const data = createDocumentSchema.parse(req.body);
-
-    // Verify agent exists and belongs to user (if agent role)
-    const agent = await prisma.agent.findUnique({
-      where: { id: data.agentId }
-    });
-
-    if (!agent) {
-      throw new AppError('Agent non trouve', 404);
-    }
-
-    if (req.user!.role === 'AGENT' && agent.userId !== req.user!.id) {
-      throw new AppError('Acces refuse', 403);
-    }
-
-    if (data.type === 'NIVEAU_ANGLAIS' && !data.englishLevel) {
-      throw new AppError('Le niveau d\'anglais (4, 5 ou 6) est obligatoire pour ce document', 400);
-    }
-
-    if (data.type !== 'NIVEAU_ANGLAIS' && data.englishLevel) {
-      throw new AppError('Le niveau d\'anglais ne s\'applique qu\'au document NIVEAU_ANGLAIS', 400);
-    }
-
-    if ((agent.instructeur || (agent.posteAdministratif && agent.posteAdministratif !== 'AUCUN')) && data.type !== 'JUSTIFICATIF_NOMINATION') {
-      const justificatif = await prisma.document.findFirst({
-        where: {
-          agentId: data.agentId,
-          type: 'JUSTIFICATIF_NOMINATION',
-          status: { in: ['EN_ATTENTE', 'VALIDE'] }
-        }
-      });
-      if (!justificatif) {
-        throw new AppError('Un justificatif de nomination est obligatoire pour un instructeur ou un poste administratif', 400);
-      }
-    }
-
-    // Check if document type already submitted (allow re-submission of REJETE documents)
-    // For PHOTO_IDENTITE, we allow replacement by deleting the old one
-    const existing = await prisma.document.findFirst({
-      where: {
-        agentId: data.agentId,
-        type: data.type,
-        status: { in: ['EN_ATTENTE', 'VALIDE'] }
-      }
-    });
-
-    if (existing) {
-      // For PHOTO_IDENTITE: delete old photo and replace it
-      if (data.type === 'PHOTO_IDENTITE') {
-        // Delete old file from filesystem if it exists
-        const oldFilePath = path.join(process.cwd(), existing.filePath.startsWith('/') ? existing.filePath.substring(1) : existing.filePath);
-        if (fs.existsSync(oldFilePath)) {
-          try {
-            fs.unlinkSync(oldFilePath);
-          } catch (err) {
-            console.error('Failed to delete old photo file:', err);
-          }
-        }
-        // Delete old document from database
-        await prisma.document.delete({
-          where: { id: existing.id }
-        });
-      } else {
-        // For other document types: reject if already exists
-        if (req.file) {
-          fs.unlinkSync(req.file.path);
-        }
-        throw new AppError('Ce type de document a deja ete soumis', 400);
-      }
-    }
-
-    // Check for rejected document - if exists, archive it before creating new
-    const rejectedDoc = await prisma.document.findFirst({
-      where: {
-        agentId: data.agentId,
-        type: data.type,
-        status: 'REJETE'
-      }
-    });
-
-    if (rejectedDoc) {
-      // Archive the rejected document
-      await prisma.document.update({
-        where: { id: rejectedDoc.id },
-        data: { 
-          archived: true,
-          archivedAt: new Date()
-        }
-      });
-      
-      // Reset agent status if needed
-      if (agent.status === 'QIP_REJETE' || agent.status === 'DLAA_REJETE') {
-        await prisma.agent.update({
-          where: { id: data.agentId },
-          data: { status: 'DOCUMENTS_SOUMIS' }
-        });
-      }
-    }
-
-    // Get file info from multer
-    let fileName: string;
-    let relativePath: string;
-
-    if (req.file) {
-      // Use uploaded file info
-      fileName = req.file.filename;
-      relativePath = `/uploads/documents/${data.agentId}/${fileName}`;
-    } else {
-      // No file uploaded - use placeholder
-      fileName = `${data.type}_${Date.now()}.pdf`;
-      relativePath = `/uploads/documents/${data.agentId}/${fileName}`;
-    }
-
-    // Date de validite selon type de document
-    let expiresAt: Date | null = null;
-    if (data.type === 'CERTIFICAT_MEDICAL') {
-      const birthDate = new Date(agent.dateNaissance);
-      const ageAtIssue = data.issuedAt.getFullYear() - birthDate.getFullYear() - (
-        data.issuedAt.getMonth() < birthDate.getMonth() ||
-        (data.issuedAt.getMonth() === birthDate.getMonth() && data.issuedAt.getDate() < birthDate.getDate())
-          ? 1
-          : 0
-      );
-      const yearsToAdd = ageAtIssue < 40 ? 2 : 1;
-      expiresAt = new Date(data.issuedAt);
-      expiresAt.setFullYear(expiresAt.getFullYear() + yearsToAdd);
-    } else if (data.type === 'CONTROLE_COMPETENCE') {
-      expiresAt = new Date(data.issuedAt);
-      expiresAt.setFullYear(expiresAt.getFullYear() + 2);
-    } else if (data.type === 'NIVEAU_ANGLAIS') {
-      if (data.englishLevel === 4) {
-        expiresAt = new Date(data.issuedAt);
-        expiresAt.setFullYear(expiresAt.getFullYear() + 3);
-      } else if (data.englishLevel === 5) {
-        expiresAt = new Date(data.issuedAt);
-        expiresAt.setFullYear(expiresAt.getFullYear() + 6);
-      } else {
-        expiresAt = null; // 6/6 : a vie
-      }
-    }
-
-    // Create document with actual file path
-    const document = await prisma.document.create({
-      data: {
-        agentId: data.agentId,
-        type: data.type,
-        fileName: fileName,
-        filePath: relativePath,
-        status: 'EN_ATTENTE',
-        issuedAt: data.issuedAt,
-        expiresAt,
-        englishLevel: data.type === 'NIVEAU_ANGLAIS' ? data.englishLevel : null
-      },
-      include: {
-        agent: {
-          include: {
-            user: {
-              select: { firstName: true, lastName: true }
-            }
-          }
-        }
-      }
-    });
-
-    // Update agent status if needed
-    if (agent.status === 'EN_ATTENTE') {
-      await prisma.agent.update({
-        where: { id: data.agentId },
-        data: { status: 'DOCUMENTS_SOUMIS' }
-      });
-    }
-
-    // Update agent photoUrl if document is a PHOTO_IDENTITE
-    if (data.type === 'PHOTO_IDENTITE') {
-      await prisma.agent.update({
-        where: { id: data.agentId },
-        data: { photoUrl: relativePath }
-      });
-    }
-
-    res.status(201).json({ success: true, data: document });
-  } catch (error) {
-    // Clean up uploaded file on error
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
-    if (error instanceof z.ZodError) {
-      res.status(400).json({ 
-        success: false, 
-        error: error.errors[0].message 
-      });
-      return;
-    }
-    next(error);
+router.get('/agent/:agentId', authenticate, (req: AuthRequest, res) => {
+  const agent = getAgentById(req.params.agentId);
+  if (!agent) {
+    res.status(404).json({ success: false, error: 'Agent introuvable' });
+    return;
   }
+
+  if (req.user?.role === 'AGENT' && agent.userId !== req.user.id) {
+    res.status(403).json({ success: false, error: 'Acces refuse a ces documents' });
+    return;
+  }
+
+  const data = getRelevantDocuments(agent.id)
+    .map(getResolvedDocument)
+    .filter((document) => document.agentId === agent.id)
+    .map((document) => ({
+      id: document.id,
+      type: document.type,
+      fileName: document.fileName,
+      status: document.status,
+      uploadedAt: document.createdAt,
+      verifiedAt: document.status === 'VALIDE' || document.status === 'REJETE' ? document.updatedAt : undefined,
+    }));
+
+  res.json({ success: true, data });
 });
 
-// Validate/Reject document (QIP/DLAA workflow)
-router.put(
-  '/:id/validate',
-  authenticate,
-  authorize('QIP', 'DLAA', 'SUPER_ADMIN'),
-  async (req: AuthRequest, res: Response, next) => {
-    try {
-      const data = validateDocumentSchema.parse(req.body);
-      const validatorRole = req.user!.role;
-
-      const document = await prisma.document.findUnique({
-        where: { id: req.params.id },
-        include: { 
-          agent: { include: { user: true } },
-          validations: true 
-        }
-      });
-
-      if (!document) {
-        throw new AppError('Document non trouve', 404);
-      }
-
-      // Vérifier les permissions selon le niveau
-      if (validatorRole === 'QIP' && document.status !== 'EN_ATTENTE') {
-        throw new AppError('Ce document a deja ete traite', 403);
-      }
-
-      // Déterminer le niveau de validation
-      const niveau = validatorRole === 'DLAA' || validatorRole === 'SUPER_ADMIN' ? 'DLAA' : 'QIP';
-
-      // Create validation record avec niveau
-      await prisma.validation.create({
-        data: {
-          documentId: document.id,
-          validatorId: req.user!.id,
-          status: data.status,
-          niveau: niveau,
-          comment: data.comment
-        }
-      });
-
-      // Mettre à jour le statut du document
-      const newStatus = data.status; // VALIDE ou REJETE
-      
-      // Si DLAA rejette, revenir à REJETE pour re-soumission
-      const finalStatus = (niveau === 'DLAA' && data.status === 'REJETE') ? 'REJETE' : newStatus;
-
-      const updatedDocument = await prisma.document.update({
-        where: { id: req.params.id as string },
-        data: { 
-          status: finalStatus
-        },
-        include: {
-          agent: true,
-          validations: {
-            include: {
-              validator: {
-                select: { firstName: true, lastName: true, role: true }
-              }
-            },
-            orderBy: { createdAt: 'desc' }
-          }
-        }
-      });
-
-      // Créer notification pour l'agent
-      await prisma.notification.create({
-        data: {
-          userId: document.agent.userId,
-          type: data.status === 'VALIDE' ? 'VALIDATION' : 'REJET',
-          title: data.status === 'VALIDE' ? 'Document valide' : 'Document rejete',
-          message: `Votre document ${document.type} a ete ${data.status === 'VALIDE' ? 'valide' : 'rejete'} par ${niveau}`,
-          data: JSON.stringify({ documentId: document.id, niveau, comment: data.comment })
-        }
-      });
-
-      // Mettre à jour le statut de l'agent selon le workflow
-      // Règle: Tous les documents doivent être validés par QIP avant passage à DLAA
-      const agentDocs = await prisma.document.findMany({
-        where: { agentId: document.agentId }
-      });
-
-      const allValidated = agentDocs.length > 0 && agentDocs.every(d => d.status === 'VALIDE');
-      const anyRejected = agentDocs.some(d => d.status === 'REJETE');
-      const allQIPOrDLAAValidated = agentDocs.every(d => 
-        d.status === 'VALIDE' || d.status === 'REJETE'
-      );
-
-      // Workflow: EN_ATTENTE → DOCUMENTS_QIP_VALIDES → DLAA_DELIVRE
-      // Pour que l'agent passe à DLAA, QIP doit valider TOUS les documents
-      if (niveau === 'QIP') {
-        if (allValidated) {
-          // Tous les documents validés par QIP → passage à l'étape DLAA
-          await prisma.agent.update({
-            where: { id: document.agentId },
-            data: { status: 'QIP_VALIDE' }
-          });
-          
-          // Notification pour l'agent
-          await prisma.notification.create({
-            data: {
-              userId: document.agent.userId,
-              type: 'VALIDATION',
-              title: 'Documents validés par QIP',
-              message: 'Tous vos documents ont été validés par le QIP. Votre dossier passe à l\'étape DLAA.',
-              data: JSON.stringify({ agentId: document.agentId, niveau: 'QIP' })
-            }
-          });
-        } else if (anyRejected) {
-          // Au moins un document rejeté
-          await prisma.agent.update({
-            where: { id: document.agentId },
-            data: { status: 'QIP_REJETE' }
-          });
-        }
-        // Si pas tous validés et pas de rejet, l'agent reste en cours de validation QIP
-      } else if (niveau === 'DLAA') {
-        // DLAA ne peut valider que si QIP a déjà tout validé
-        const agent = await prisma.agent.findUnique({
-          where: { id: document.agentId }
-        });
-        
-        if (agent?.status === 'QIP_VALIDE' && allValidated) {
-          await prisma.agent.update({
-            where: { id: document.agentId },
-            data: { status: 'DLAA_DELIVRE' }
-          });
-          
-          // Notification de validation finale
-          await prisma.notification.create({
-            data: {
-              userId: document.agent.userId,
-              type: 'VALIDATION',
-              title: 'Licence DLAA délivrée',
-              message: 'Votre licence d\'accès aéroportuaire a été délivrée.',
-              data: JSON.stringify({ agentId: document.agentId, niveau: 'DLAA' })
-            }
-          });
-        } else if (data.status === 'REJETE') {
-          await prisma.agent.update({
-            where: { id: document.agentId },
-            data: { status: 'DLAA_REJETE' }
-          });
-        }
-      }
-
-      res.json({ success: true, data: updatedDocument });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ 
-          success: false, 
-          error: error.errors[0].message 
-        });
-        return;
-      }
-      next(error);
-    }
+router.get('/:id', authenticate, (req: AuthRequest, res) => {
+  const rawDocument = getDocumentById(req.params.id);
+  const document = rawDocument ? getResolvedDocument(rawDocument) : undefined;
+  if (!document) {
+    res.status(404).json({ success: false, error: 'Document introuvable' });
+    return;
   }
-);
 
-// Delete document
-router.delete(
-  '/:id',
-  authenticate,
-  async (req: AuthRequest, res: Response, next) => {
-    try {
-      const document = await prisma.document.findUnique({
-        where: { id: req.params.id as string },
-        include: { agent: true }
-      });
-
-      if (!document) {
-        throw new AppError('Document non trouve', 404);
-      }
-
-      // Only owner or admin can delete
-      if (
-        req.user!.role === 'AGENT' && 
-        document.agent.userId !== req.user!.id
-      ) {
-        throw new AppError('Acces refuse', 403);
-      }
-
-      // Can only delete pending documents
-      if (document.status !== 'EN_ATTENTE' && req.user!.role !== 'SUPER_ADMIN') {
-        throw new AppError('Impossible de supprimer un document valide', 400);
-      }
-
-      await prisma.document.delete({
-        where: { id: req.params.id as string }
-      });
-
-      res.json({ success: true, message: 'Document supprime' });
-    } catch (error) {
-      next(error);
-    }
+  if (!canAccessDocument(req, document)) {
+    res.status(403).json({ success: false, error: 'Acces refuse a ce document' });
+    return;
   }
-);
 
-// Preview document - serve file for viewing (no auth required for direct browser access)
-router.get('/:id/preview', async (req: AuthRequest, res: Response, next) => {
-  try {
-    const document = await prisma.document.findUnique({
-      where: { id: req.params.id as string },
-      include: { agent: true }
-    });
-
-    if (!document) {
-      throw new AppError('Document non trouve', 404);
-    }
-
-    // Build file path from document filePath
-    const filePath = path.join(process.cwd(), document.filePath.startsWith('/') ? document.filePath.substring(1) : document.filePath);
-    
-    if (!fs.existsSync(filePath)) {
-      // Return placeholder info if file doesn't exist yet
-      res.json({
-        success: true,
-        data: {
-          id: document.id,
-          fileName: document.fileName,
-          filePath: document.filePath,
-          type: document.type,
-          status: document.status,
-          previewAvailable: false,
-          message: 'Fichier physique non disponible (demo mode)'
-        }
-      });
-      return;
-    }
-
-    // Determine content type
-    const ext = path.extname(filePath).toLowerCase();
-    const contentTypeMap: Record<string, string> = {
-      '.pdf': 'application/pdf',
-      '.jpg': 'image/jpeg',
-      '.jpeg': 'image/jpeg',
-      '.png': 'image/png',
-      '.gif': 'image/gif',
-      '.svg': 'image/svg+xml'
-    };
-    const contentType = contentTypeMap[ext] || 'application/octet-stream';
-
-    // Stream the file
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `inline; filename="${document.fileName}"`);
-    
-    const stream = fs.createReadStream(filePath);
-    stream.pipe(res);
-  } catch (error) {
-    next(error);
-  }
+  res.json({
+    success: true,
+    data: {
+      ...document,
+      agent: getAgentById(document.agentId) ? enrichAgent(getAgentById(document.agentId)!) : undefined,
+    },
+  });
 });
 
-// Check for expired documents (admin only)
-router.get('/expired/list', authenticate, authorize('SUPER_ADMIN', 'QIP', 'DLAA'), async (req: AuthRequest, res: Response, next) => {
-  try {
-    const now = new Date();
-    
-    const expiredDocs = await prisma.document.findMany({
-      where: {
-        status: 'VALIDE',
-        expiresAt: { lt: now }
-      },
-      include: {
-        agent: {
-          include: {
-            user: {
-              select: { firstName: true, lastName: true, email: true }
-            }
-          }
-        }
-      },
-      orderBy: { expiresAt: 'asc' }
-    });
-
-    res.json({
-      success: true,
-      data: expiredDocs,
-      total: expiredDocs.length,
-      checkedAt: now.toISOString()
-    });
-  } catch (error) {
-    next(error);
+router.get('/:id/preview', authenticate, (req: AuthRequest, res) => {
+  const rawDocument = getDocumentById(req.params.id);
+  const document = rawDocument ? getResolvedDocument(rawDocument) : undefined;
+  if (!document) {
+    res.status(404).json({ success: false, error: 'Document introuvable' });
+    return;
   }
+
+  if (!canAccessDocument(req, document)) {
+    res.status(403).json({ success: false, error: 'Acces refuse a ce document' });
+    return;
+  }
+
+  const absolutePath = path.resolve(process.cwd(), document.filePath);
+  if (!fs.existsSync(absolutePath)) {
+    res.status(404).json({ success: false, error: 'Fichier introuvable' });
+    return;
+  }
+
+  res.sendFile(absolutePath);
+});
+
+router.post('/', authenticate, upload.single('file'), (req: AuthRequest, res) => {
+  if (!req.file) {
+    res.status(400).json({ success: false, error: 'Fichier manquant' });
+    return;
+  }
+
+  const agent = getAgentById(String(req.body.agentId));
+  if (!agent) {
+    safelyDeleteUploadedFile(req.file.path);
+    res.status(404).json({ success: false, error: 'Agent introuvable' });
+    return;
+  }
+
+  if (req.user?.role === 'AGENT' && agent.userId !== req.user.id) {
+    safelyDeleteUploadedFile(req.file.path);
+    res.status(403).json({ success: false, error: 'Acces refuse a cet agent' });
+    return;
+  }
+
+  const type = pickEnumValue(req.body.type, DOCUMENT_TYPES);
+  if (!type) {
+    safelyDeleteUploadedFile(req.file.path);
+    res.status(400).json({ success: false, error: 'Type de document invalide' });
+    return;
+  }
+
+  const rawIssuedAt = asTrimmedString(req.body.issuedAt) ?? new Date().toISOString().slice(0, 10);
+  if (!isValidDateInput(rawIssuedAt)) {
+    safelyDeleteUploadedFile(req.file.path);
+    res.status(400).json({ success: false, error: 'Date d emission invalide' });
+    return;
+  }
+
+  const issuedAt = rawIssuedAt;
+  const englishLevel = parseEnglishLevel(req.body.englishLevel);
+  if (type === 'NIVEAU_ANGLAIS' && !englishLevel) {
+    safelyDeleteUploadedFile(req.file.path);
+    res.status(400).json({ success: false, error: 'Le niveau d anglais doit etre 4, 5 ou 6' });
+    return;
+  }
+
+  if (type === 'JUSTIFICATIF_NOMINATION' && !requiresJustificatif(agent)) {
+    safelyDeleteUploadedFile(req.file.path);
+    res.status(400).json({ success: false, error: 'Le justificatif n est requis que pour les instructeurs et postes administratifs' });
+    return;
+  }
+
+  const document: Document = {
+    id: createId('doc'),
+    agentId: agent.id,
+    type,
+    fileName: req.file.originalname,
+    filePath: path.relative(process.cwd(), req.file.path).replace(/\\/g, '/'),
+    status: 'EN_ATTENTE',
+    issuedAt,
+    expiresAt: computeDocumentExpiry(agent, type, issuedAt, englishLevel),
+    englishLevel,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  addDocument(document);
+  updateAgentDerivedStatus(agent.id);
+  res.status(201).json({ success: true, data: document });
+});
+
+router.post('/:id/verify', authenticate, (req: AuthRequest, res) => {
+  if (!canModerateDocument(req)) {
+    res.status(403).json({ success: false, error: 'Acces refuse a cette verification' });
+    return;
+  }
+
+  const legacyStatusMap: Record<string, DocStatus> = {
+    VERIFIED: 'VALIDE',
+    REJECTED: 'REJETE',
+    PENDING: 'EN_ATTENTE',
+    EXPIRED: 'EXPIRE',
+  };
+  const nextStatus = legacyStatusMap[String(req.body?.status)] ?? pickEnumValue(req.body?.status, VALIDATION_STATUSES);
+  if (!nextStatus) {
+    res.status(400).json({ success: false, error: 'Statut de verification invalide' });
+    return;
+  }
+
+  const document = getDocumentById(req.params.id);
+  if (!document) {
+    res.status(404).json({ success: false, error: 'Document introuvable' });
+    return;
+  }
+
+  const saved = saveDocument(touch({ ...document, status: nextStatus }));
+  updateAgentDerivedStatus(document.agentId);
+  res.json({ success: true, data: saved });
+});
+
+router.put('/:id/validate', authenticate, (req: AuthRequest, res) => {
+  const document = getDocumentById(req.params.id);
+  if (!document) {
+    res.status(404).json({ success: false, error: 'Document introuvable' });
+    return;
+  }
+
+  if (!canModerateDocument(req)) {
+    res.status(403).json({ success: false, error: 'Acces refuse a cette validation' });
+    return;
+  }
+
+  const nextStatus = pickEnumValue(req.body?.status, VALIDATION_STATUSES);
+  if (!nextStatus) {
+    res.status(400).json({ success: false, error: 'Statut de validation invalide' });
+    return;
+  }
+
+  document.status = nextStatus;
+  const saved = saveDocument(touch(document));
+  updateAgentDerivedStatus(document.agentId);
+
+  res.json({ success: true, data: saved });
+});
+
+router.delete('/:id', authenticate, (req: AuthRequest, res) => {
+  const document = getDocumentById(req.params.id);
+  if (!document) {
+    res.status(404).json({ success: false, error: 'Document introuvable' });
+    return;
+  }
+
+  if (!canAccessDocument(req, document)) {
+    res.status(403).json({ success: false, error: 'Acces refuse a ce document' });
+    return;
+  }
+
+  const removed = removeDocument(req.params.id);
+  if (!removed) {
+    res.status(404).json({ success: false, error: 'Document introuvable' });
+    return;
+  }
+  updateAgentDerivedStatus(removed.agentId);
+  res.json({ success: true, data: undefined });
 });
 
 export default router;

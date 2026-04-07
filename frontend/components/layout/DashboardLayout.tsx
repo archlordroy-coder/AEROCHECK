@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import appLogo from '@/logo/logosansfond.png';
+const appLogo = '/favicon.svg';
 import {
   LayoutDashboard,
   User,

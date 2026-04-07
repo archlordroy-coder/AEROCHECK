@@ -1,31 +1,45 @@
 import fs from "fs";
 import path from "path";
-import { spawnSync } from "child_process";
+import dotenv from "dotenv";
+import Database from "better-sqlite3";
 
 const projectRoot = path.resolve(process.cwd(), "..");
-const schemaPath = path.join(projectRoot, "schema.sql");
-const defaultDbPath = path.join(process.cwd(), "data", "aerocheck.db");
-const dbPath = process.env.DATABASE_PATH
-  ? path.resolve(process.cwd(), process.env.DATABASE_PATH)
-  : defaultDbPath;
+dotenv.config({ path: path.join(projectRoot, ".env") });
 
-if (!fs.existsSync(schemaPath)) {
-  console.error(`❌ schema.sql introuvable: ${schemaPath}`);
-  process.exit(1);
+function resolveDbPath() {
+  const databasePath = process.env.DATABASE_PATH?.trim();
+  const databaseUrl = process.env.DATABASE_URL?.trim();
+  const backendRoot = path.resolve(projectRoot, "backend");
+
+  const resolveLegacyRelativePath = (rawPath) => {
+    const normalized = rawPath.replace(/^\.\/+/, "");
+    if (normalized === "prisma/dev.db" || normalized.startsWith("prisma/")) {
+      return path.resolve(backendRoot, normalized);
+    }
+    return path.resolve(projectRoot, rawPath);
+  };
+
+  if (databasePath) {
+    return resolveLegacyRelativePath(databasePath);
+  }
+
+  if (databaseUrl?.startsWith("file:")) {
+    return resolveLegacyRelativePath(databaseUrl.slice("file:".length));
+  }
+
+  return path.resolve(projectRoot, "backend/prisma/dev.db");
 }
+
+const dbPath = resolveDbPath();
+const uploadsDir = path.join(process.cwd(), "uploads", "documents");
 
 fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+fs.mkdirSync(uploadsDir, { recursive: true });
 
-const schemaSql = fs.readFileSync(schemaPath, "utf8");
-const result = spawnSync("sqlite3", [dbPath], {
-  input: schemaSql,
-  encoding: "utf8",
-});
+const sqlite = new Database(dbPath);
+sqlite.exec("PRAGMA journal_mode = WAL;");
+sqlite.prepare("CREATE TABLE IF NOT EXISTS __aerocheck_init (id INTEGER PRIMARY KEY, created_at TEXT NOT NULL)").run();
+sqlite.close();
 
-if (result.status !== 0) {
-  console.error("❌ Erreur initialisation SQLite");
-  console.error(result.stderr || result.stdout);
-  process.exit(result.status ?? 1);
-}
-
-console.log(`✅ Base SQLite initialisée: ${dbPath}`);
+console.log(`✅ SQLite prête: ${dbPath}`);
+console.log(`✅ Répertoires prêts: ${uploadsDir}`);

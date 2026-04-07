@@ -1,7 +1,7 @@
-import type { 
-  ApiResponse, 
-  AuthResponse, 
-  LoginRequest, 
+import type {
+  ApiResponse,
+  AuthResponse,
+  LoginRequest,
   RegisterRequest,
   User,
   Agent,
@@ -9,13 +9,25 @@ import type {
   License,
   DashboardStats,
   PaginatedResponse,
-  Role
+  Role,
+  DocStatus,
+  LicenseStatus as SharedLicenseStatus,
 } from '@shared/types';
+import type { HealthResponse, OverviewResponse } from '@shared/api';
 
 // Export UserRole as alias for Role
 export type UserRole = Role;
+export type DocumentStatus = DocStatus;
+export type LicenseStatus = SharedLicenseStatus;
+export { DOC_STATUS_LABELS, LICENSE_STATUS_LABELS } from '@shared/types';
 
 const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+
+export function resolveApiAssetUrl(assetPath?: string | null): string | undefined {
+  if (!assetPath) return undefined;
+  if (/^https?:\/\//i.test(assetPath)) return assetPath;
+  return API_URL ? `${API_URL}${assetPath}` : assetPath;
+}
 
 // Get stored token
 function getToken(): string | null {
@@ -143,6 +155,7 @@ export const agentsApi = {
       lastName: string;
       email: string;
       aeroport: string;
+      pays: string;
       status: string;
       documentStats: {
         total: number;
@@ -159,6 +172,12 @@ export const agentsApi = {
 
   getLicenses: (agentId: string) =>
     request<ApiResponse<License[]>>(`/api/agents/${agentId}/licenses`),
+
+  uploadPhoto: (agentId: string, data: FormData) =>
+    request<ApiResponse<Agent>>(`/api/agents/${agentId}/photo`, {
+      method: 'POST',
+      body: data,
+    }),
 };
 
 // Documents API
@@ -216,7 +235,7 @@ export const licensesApi = {
 
   get: (id: string) => request<ApiResponse<License>>(`/api/licenses/${id}`),
 
-  issue: (data: { agentId: string; validityYears?: number }) =>
+  issue: (data: { agentId: string }) =>
     request<ApiResponse<License>>('/api/licenses', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -236,7 +255,16 @@ export const licensesApi = {
 
 // Stats API
 export const statsApi = {
-  overview: () => request<ApiResponse<DashboardStats>>('/api/stats/overview'),
+  overview: () =>
+    request<
+      ApiResponse<
+        DashboardStats &
+          OverviewResponse & {
+            licencesActives: number;
+            licencesExpirees: number;
+          }
+      >
+    >('/api/stats/overview'),
   
   workflow: () => request<ApiResponse<{
     workflow: Record<string, number>;
@@ -263,7 +291,7 @@ export const referencesApi = {
 
 // Health check
 export function getHealth() {
-  return request<{ status: string; timestamp: string }>('/api/health');
+  return request<HealthResponse & { timestamp: string }>('/api/health');
 }
 
 // Generic api object for direct endpoint access

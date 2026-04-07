@@ -1,9 +1,5 @@
 #!/bin/bash
-
-# AEROCHECK - Start script
-# Lancer le backend et le frontend simultanément
-
-set -e
+set -euo pipefail
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -24,8 +20,12 @@ if [ -f .env ]; then
     set +a
 fi
 
-BACKEND_PORT=${PORT:-${API_PORT:-3001}}
-FRONTEND_PORT=${FRONTEND_PORT:-8080}
+# Forcer le mode développement pour ce script (sinon npm peut ignorer les devDependencies)
+export NODE_ENV=development
+
+BACKEND_PORT=${PORT:-${API_PORT:-3501}}
+FRONTEND_PORT=${FRONTEND_PORT:-3502}
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Check if npm is installed
 if ! command -v npm &> /dev/null; then
@@ -43,24 +43,38 @@ cleanup() {
 
 trap cleanup SIGINT SIGTERM
 
+ensure_process_running() {
+    local pid="$1"
+    local name="$2"
+    if ! kill -0 "$pid" 2>/dev/null; then
+        echo -e "${YELLOW}❌ ${name} ne s'est pas lancé correctement${NC}"
+        wait "$pid" || true
+        exit 1
+    fi
+}
+
 # Start Backend
 echo -e "${GREEN}🚀 Démarrage du Backend (localhost:${BACKEND_PORT})...${NC}"
-cd backend
-npm install --silent 2>/dev/null || true
-npm run dev &
+cd "$PROJECT_ROOT/backend"
+npm install --include=dev --silent
+npm run db:init --silent
+PORT="$BACKEND_PORT" npm run dev &
 BACKEND_PID=$!
-cd ..
+cd "$PROJECT_ROOT"
 
 # Wait a bit for backend to start
 sleep 3
+ensure_process_running "$BACKEND_PID" "Le backend"
 
 # Start Frontend
 echo -e "${GREEN}🚀 Démarrage du Frontend (localhost:${FRONTEND_PORT})...${NC}"
-cd frontend
-npm install --silent 2>/dev/null || true
-npm run dev &
+cd "$PROJECT_ROOT/frontend"
+npm install --include=dev --silent
+VITE_API_URL="" npm run dev -- --host 0.0.0.0 --port "$FRONTEND_PORT" &
 FRONTEND_PID=$!
-cd ..
+cd "$PROJECT_ROOT"
+sleep 3
+ensure_process_running "$FRONTEND_PID" "Le frontend"
 
 echo ""
 echo -e "${BLUE}=========================================${NC}"

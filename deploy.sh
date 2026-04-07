@@ -1,10 +1,9 @@
 #!/bin/bash
+set -euo pipefail
 
 # Script de déploiement AEROCHECK pour serveur de production
 # Usage: ./deploy.sh [environment]
 # Environments: production (default), staging
-
-set -e  # Arrêter en cas d'erreur
 
 # Couleurs pour les logs
 RED='\033[0;31m'
@@ -103,7 +102,7 @@ log_info "Configuration des permissions..."
 chown -R www-data:www-data "$PROJECT_DIR"
 find "$PROJECT_DIR" -type f -exec chmod 644 {} \;
 find "$PROJECT_DIR" -type d -exec chmod 755 {} \;
-chmod +x "$PROJECT_DIR/backend/dist/index.js"
+chmod +x "$PROJECT_DIR/backend/dist/backend/src/index.js"
 log_success "Permissions configurées"
 
 # 11. Démarrage/Redémarrage avec PM2
@@ -118,10 +117,10 @@ fi
 # Démarrer ou recharger l'application
 if pm2 list | grep -q "$PROJECT_NAME"; then
     log_info "Redémarrage de l'application existante..."
-    pm2 reload ecosystem.config.js --env $ENVIRONMENT
+    pm2 reload ecosystem.config.cjs --env $ENVIRONMENT
 else
     log_info "Démarrage de l'application..."
-    pm2 start ecosystem.config.js --env $ENVIRONMENT
+    pm2 start ecosystem.config.cjs --env $ENVIRONMENT
 fi
 
 # Sauvegarder la configuration PM2
@@ -137,15 +136,17 @@ log_info "Vérification de la santé (timeout: ${timeout}s)..."
 sleep 3
 
 # Récupérer le port depuis le .env (PORT ou API_PORT)
-PORT="3001"
+APP_PORT="3501"
+FRONT_PORT="3502"
 if [ -f "$PROJECT_DIR/.env" ]; then
     # shellcheck disable=SC1091
     set -a
     . "$PROJECT_DIR/.env"
     set +a
-    PORT=${PORT:-${API_PORT:-3001}}
+    APP_PORT=${PORT:-${API_PORT:-3501}}
+    FRONT_PORT=${FRONTEND_PORT:-3502}
 fi
-HEALTH_URL="http://localhost:$PORT/api/health"
+HEALTH_URL="http://localhost:$APP_PORT/api/health"
 
 for i in $(seq 1 $timeout); do
     if curl -s "$HEALTH_URL" | grep -q "ok"; then
@@ -172,8 +173,9 @@ echo ""
 log_success "Déploiement AEROCHECK terminé avec succès!"
 echo ""
 echo -e "${GREEN}URLs:${NC}"
-echo "  - Health Check: http://localhost:$PORT/api/health"
-echo "  - API: http://localhost:$PORT/api"
+echo "  - Health Check: http://localhost:$APP_PORT/api/health"
+echo "  - API: http://localhost:$APP_PORT/api"
+echo "  - Frontend: http://localhost:$FRONT_PORT"
 echo ""
 echo -e "${YELLOW}Commandes utiles:${NC}"
 echo "  pm2 status              - Voir le statut"

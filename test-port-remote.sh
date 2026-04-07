@@ -1,20 +1,23 @@
 #!/bin/bash
 
-# Script de test pour vérifier si le port 3500 est libre sur le serveur distant
+# Script de test pour vérifier si le port backend configuré est libre sur le serveur distant
 # Utilise SSH pour se connecter au serveur défini dans .env
 # Usage: ./test-port-remote.sh
 
-set -e
+set -euo pipefail
 
 # Charger les variables depuis .env
 if [ -f .env ]; then
-    export $(grep -v '^#' .env | grep -E '^(SERVER|PORT|PASS)=' | sed 's/\r$//' | xargs)
+    # shellcheck disable=SC1091
+    set -a
+    . ./.env
+    set +a
 fi
 
 # Configuration
 REMOTE_USER=${SERVER_USER:-"root"}
 REMOTE_HOST=${SERVER_IP:-"82.165.150.150"}
-PORT=${PORT:-3500}
+PORT=${PORT:-${API_PORT:-3501}}
 SERVER_PASS=${SERVER_PASS:-""}
 
 # Vérifier que sshpass est installé si on a un mot de passe
@@ -58,7 +61,7 @@ echo ""
 
 # Test de connexion SSH
 echo "🔗 Test de connexion SSH..."
-if ! ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$REMOTE_USER@$REMOTE_HOST" "echo 'SSH OK'" 2>/dev/null | grep -q "SSH OK"; then
+if ! remote_exec "echo 'SSH OK'" 2>/dev/null | grep -q "SSH OK"; then
     echo -e "${RED}❌ Impossible de se connecter au serveur via SSH${NC}"
     echo "Vérifiez:"
     echo "  - Que le serveur est en ligne"
@@ -72,15 +75,10 @@ echo ""
 # 1. Vérifier si le port est utilisé
 echo "1. Vérification des processus utilisant le port $PORT..."
 PORT_CHECK=$(remote_exec "
-    if command -v lsof &> /dev/null; then
-        lsof -i :$PORT 2>/dev/null || echo 'FREE'
-    elif command -v netstat &> /dev/null; then
-        netstat -tuln 2>/dev/null | grep -q ":$PORT " && echo 'USED' || echo 'FREE'
-    elif command -v ss &> /dev/null; then
-        ss -tuln 2>/dev/null | grep -q ":$PORT " && echo 'USED' || echo 'FREE'
-    else
-        echo 'UNKNOWN'
-    fi
+    if command -v lsof >/dev/null 2>&1; then lsof -i :$PORT 2>/dev/null || echo FREE;
+    elif command -v netstat >/dev/null 2>&1; then netstat -tuln 2>/dev/null | grep -q ':$PORT ' && echo USED || echo FREE;
+    elif command -v ss >/dev/null 2>&1; then ss -tuln 2>/dev/null | grep -q ':$PORT ' && echo USED || echo FREE;
+    else echo UNKNOWN; fi
 ")
 
 if echo "$PORT_CHECK" | grep -q "USED"; then
@@ -96,7 +94,7 @@ echo ""
 
 # 2. Vérifier PM2
 echo "2. Vérification des processus PM2..."
-PM2_CHECK=$(remote_exec "command -v pm2 &> /dev/null && pm2 list 2>/dev/null || echo 'NOT_INSTALLED'")
+PM2_CHECK=$(remote_exec "command -v pm2 >/dev/null 2>&1 && pm2 list 2>/dev/null || echo 'NOT_INSTALLED'")
 
 if echo "$PM2_CHECK" | grep -q "NOT_INSTALLED"; then
     echo -e "${YELLOW}⚠️  PM2 n'est pas installé sur le serveur${NC}"
@@ -106,7 +104,7 @@ elif echo "$PM2_CHECK" | grep -q "online\|stopped"; then
     
     # Vérifier si aerocheck utilise le port
     AEROCHECK_RUNNING=$(remote_exec "pm2 list 2>/dev/null | grep -q 'aerocheck.*online' && echo 'YES' || echo 'NO'")
-    if [ "$AEROCHECK_RUNNING" = "YES" ]; then
+    if [ "${AEROCHECK_RUNNING:-NO}" = "YES" ]; then
         echo -e "${YELLOW}⚠️  AEROCHECK est déjà en cours d'exécution sur PM2${NC}"
     else
         echo -e "${GREEN}✅ AEROCHECK n'est pas en cours d'exécution${NC}"
@@ -156,7 +154,7 @@ if echo "$PORT_CHECK" | grep -q "USED"; then
     ALL_OK=false
 fi
 
-if [ "$AEROCHECK_RUNNING" = "YES" ]; then
+if [ "${AEROCHECK_RUNNING:-NO}" = "YES" ]; then
     echo -e "${YELLOW}⚠️  AEROCHECK déjà en cours${NC}"
 fi
 

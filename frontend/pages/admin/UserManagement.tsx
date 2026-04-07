@@ -61,12 +61,12 @@ export default function UserManagement() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await api.get<{ success: boolean, data: User[] }>('/auth/users');
-      setUsers(response.data.data);
+      const response = await api.get<{ success: boolean; data: User[] }>('/auth/users');
+      setUsers(response.data.data ?? []);
     } catch (error) {
       toast({
         title: 'Erreur',
-        description: 'Impossible de charger les utilisateurs',
+        description: error instanceof Error ? error.message : 'Impossible de charger les utilisateurs',
         variant: 'destructive',
       });
     } finally {
@@ -87,7 +87,7 @@ export default function UserManagement() {
     } catch (error: any) {
       toast({
         title: 'Erreur',
-        description: error.response?.data?.message || 'Erreur lors de la creation',
+        description: error instanceof Error ? error.message : 'Erreur lors de la creation',
         variant: 'destructive',
       });
     }
@@ -111,7 +111,7 @@ export default function UserManagement() {
     } catch (error: any) {
       toast({
         title: 'Erreur',
-        description: error.response?.data?.message || 'Erreur lors de la mise a jour',
+        description: error instanceof Error ? error.message : 'Erreur lors de la mise a jour',
         variant: 'destructive',
       });
     }
@@ -130,7 +130,7 @@ export default function UserManagement() {
     } catch (error: any) {
       toast({
         title: 'Erreur',
-        description: error.response?.data?.message || 'Erreur lors de la modification',
+        description: error instanceof Error ? error.message : 'Erreur lors de la modification',
         variant: 'destructive',
       });
     }

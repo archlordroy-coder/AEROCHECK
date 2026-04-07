@@ -93,8 +93,8 @@ npm run dev:frontend
 
 URLs par defaut :
 
-- frontend : `http://localhost:8080`
-- backend : `http://localhost:3000`
+- frontend : `http://localhost:3502`
+- backend : `http://localhost:3501`
 
 ## Scripts utiles
 

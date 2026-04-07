@@ -9,7 +9,7 @@ import sys
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
-BASE_URL = "http://localhost:3001"
+BASE_URL = "http://localhost:3501"
 TOKEN = None
 
 def api_request(method, path, data=None, headers=None):

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -55,8 +55,7 @@ export function DocumentPreview({
     resizeRef.current = null;
   }, []);
 
-  // Add global mouse events for resizing
-  useState(() => {
+  useEffect(() => {
     if (isResizing) {
       window.addEventListener('mousemove', handleResizeMove);
       window.addEventListener('mouseup', handleResizeEnd);
@@ -65,7 +64,7 @@ export function DocumentPreview({
         window.removeEventListener('mouseup', handleResizeEnd);
       };
     }
-  });
+  }, [handleResizeEnd, handleResizeMove, isResizing]);
 
   if (!document) return null;
 
@@ -85,7 +84,7 @@ export function DocumentPreview({
             Document de {document.agent?.user?.firstName} {document.agent?.user?.lastName}
             {document.agent?.aeroport && (
               <span className="ml-2">
-                • {COUNTRY_LABELS[document.agent.aeroport] || document.agent.aeroport}
+                • {COUNTRY_LABELS[document.agent.aeroport.code || ''] || document.agent.aeroport.nom}
               </span>
             )}
           </DialogDescription>

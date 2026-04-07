@@ -4,10 +4,8 @@ import { agentsApi, licensesApi, statsApi, referencesApi } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { 
   Table, 
@@ -20,24 +18,22 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { 
   Award, 
-  CheckCircle, 
   CreditCard,
-  ArrowRight,
   Users,
-  CheckSquare,
   FileCheck,
   Filter,
   Clock,
-  FileText,
-  XCircle,
   Shield,
   MapPin,
-  Printer
+  ClipboardCheck,
+  AlertTriangle
 } from 'lucide-react';
 import { AGENT_STATUS_LABELS, LICENSE_STATUS_LABELS } from '@shared/types';
 import type { Agent, License } from '@shared/types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { filterLicenseDocuments, getRequiredLicenseDocumentTypes } from '@/lib/priority-documents';
+import { getLicenseMonitoringDate } from '@/lib/license-validity';
 
 interface Pays {
   id: string;
@@ -74,7 +70,6 @@ export default function DLAADashboard() {
     };
   }>>([]);
   const [licenses, setLicenses] = useState<License[]>([]);
-  const [pendingLicenses, setPendingLicenses] = useState<License[]>([]);
   const [pays, setPays] = useState<Pays[]>([]);
   const [aeroports, setAeroports] = useState<Aeroport[]>([]);
   const [selectedPays, setSelectedPays] = useState<string>('');
@@ -85,7 +80,6 @@ export default function DLAADashboard() {
     licencesExpirees: number;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('pending');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -134,6 +128,24 @@ export default function DLAADashboard() {
       </div>
     );
   }
+
+  const readyAgents = agents.filter((agent) => {
+    const requiredTypes = getRequiredLicenseDocumentTypes(agent);
+    const documents = filterLicenseDocuments(agent.documents ?? []);
+    return requiredTypes.every((type) =>
+      documents.some((document) => document.type === type && document.status === 'VALIDE' && (!document.expiresAt || new Date(document.expiresAt) >= new Date()))
+    );
+  });
+
+  const expiringLicenses = licenses.filter((license) => {
+    const expiration = getLicenseMonitoringDate(license.agent, license)?.getTime();
+    if (!expiration) {
+      return false;
+    }
+    const now = Date.now();
+    const horizon = now + 60 * 24 * 60 * 60 * 1000;
+    return expiration >= now && expiration <= horizon;
+  });
 
   return (
     <div className="space-y-6">
@@ -204,136 +216,93 @@ export default function DLAADashboard() {
         </Card>
       </div>
 
-      {/* Filters DLAA */}
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Filter className="h-4 w-4" />
-            Filtres DLAA par zone geographique
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ClipboardCheck className="h-5 w-5" />
+            Pipeline de delivrance DLAA
           </CardTitle>
+          <CardDescription>
+            Vue orientee décision finale, différente du backlog de verification QIP
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Pays</Label>
-              <Select value={selectedPays || "all"} onValueChange={(v) => setSelectedPays(v === "all" ? "" : v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Tous les pays" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les pays</SelectItem>
-                  {pays.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.nomFr}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-xl border p-4">
+              <p className="text-sm text-muted-foreground">Dossiers recevables</p>
+              <p className="mt-2 text-3xl font-bold text-green-600">{readyAgents.length}</p>
+              <p className="mt-2 text-xs text-muted-foreground">Agents dont le dossier est complet, valide et non expiré.</p>
             </div>
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Aeroport</Label>
-              <Select 
-                value={selectedAeroport || "all"} 
-                onValueChange={(v) => setSelectedAeroport(v === "all" ? "" : v)}
-                disabled={!selectedPays}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={selectedPays ? "Tous les aeroports" : "Selectionnez d'abord un pays"} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les aeroports</SelectItem>
-                  {aeroports
-                    .filter(a => !selectedPays || a.paysId === selectedPays)
-                    .map((a) => (
-                      <SelectItem key={a.id} value={a.id}>{a.nom} ({a.ville})</SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+            <div className="rounded-xl border p-4">
+              <p className="text-sm text-muted-foreground">Licences à surveiller</p>
+              <p className="mt-2 text-3xl font-bold text-amber-600">{expiringLicenses.length}</p>
+              <p className="mt-2 text-xs text-muted-foreground">Licences arrivant à expiration dans les 60 prochains jours.</p>
+            </div>
+            <div className="rounded-xl border p-4">
+              <p className="text-sm text-muted-foreground">Historique DLAA</p>
+              <p className="mt-2 text-3xl font-bold text-primary">{licenses.length}</p>
+              <p className="mt-2 text-xs text-muted-foreground">Licences déjà émises et disponibles pour consultation.</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Tabs for Licenses */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="pending">
-            <Clock className="h-4 w-4 mr-2" />
-            En attente emission ({agents.length})
-          </TabsTrigger>
-          <TabsTrigger value="issued">
-            <Award className="h-4 w-4 mr-2" />
-            Licences delivrees ({licenses.length})
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="pending" className="mt-6 space-y-6">
-            {/* Agents QIP Validés Card */}
-            {agentsWithStats.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileCheck className="h-5 w-5" />
-                    Agents valides par QIP sous ma responsabilite
-                  </CardTitle>
-                  <CardDescription>
-                    Ces agents sont prets pour la delivrance DLAA
-                  </CardDescription>
-                </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {agentsWithStats.map((agent) => {
-                    const progress = agent.documentStats.total > 0 
-                      ? (agent.documentStats.validated / agent.documentStats.total) * 100 
-                      : 0;
-                    return (
-                      <div key={agent.id} className="border rounded-lg p-4 space-y-3">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <p className="font-medium">
-                              {agent.firstName} {agent.lastName}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {agent.matricule}
-                            </p>
-                          </div>
-                          <Badge variant="outline" className="text-xs">
-                            {AGENT_STATUS_LABELS[agent.status as keyof typeof AGENT_STATUS_LABELS] || agent.status}
-                          </Badge>
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Validation QIP complete</span>
-                            <span className="font-medium text-green-600">
-                              {agent.documentStats.validated}/{agent.documentStats.total} valides
-                            </span>
-                          </div>
-                          <Progress value={progress} className="h-2" />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-            {/* Agents ready for DLAA license */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-yellow-600" />
-                  Agents prets pour delivrance DLAA
-                </CardTitle>
-                <CardDescription>
-                  Ces agents ont passe la verification QIP et sont prets pour la licence
-                </CardDescription>
-              </CardHeader>
+      <div className="grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Filter className="h-5 w-5" />
+                File de delivrance
+              </CardTitle>
+              <CardDescription>
+                Le DLAA pilote une décision finale par dossier, pas une verification document par document
+              </CardDescription>
+            </CardHeader>
             <CardContent>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-6">
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Pays</Label>
+                  <Select value={selectedPays || "all"} onValueChange={(v) => setSelectedPays(v === "all" ? "" : v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Tous les pays" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous les pays</SelectItem>
+                      {pays.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>{p.nomFr}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Aeroport</Label>
+                  <Select
+                    value={selectedAeroport || "all"}
+                    onValueChange={(v) => setSelectedAeroport(v === "all" ? "" : v)}
+                    disabled={!selectedPays}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={selectedPays ? "Tous les aeroports" : "Selectionnez d'abord un pays"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous les aeroports</SelectItem>
+                      {aeroports
+                        .filter((a) => !selectedPays || a.paysId === selectedPays)
+                        .map((a) => (
+                          <SelectItem key={a.id} value={a.id}>{a.nom} ({a.ville})</SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               {agents.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Users className="mb-4 h-12 w-12 text-muted-foreground" />
-                  <h3 className="text-lg font-medium">Aucun agent en attente</h3>
+                  <h3 className="text-lg font-medium">Aucun agent à traiter</h3>
                   <p className="text-sm text-muted-foreground">
-                    Tous les agents QIP valides ont recu leur licence
+                    Aucun dossier QIP valide n&apos;attend une décision finale DLAA.
                   </p>
                 </div>
               ) : (
@@ -343,60 +312,62 @@ export default function DLAADashboard() {
                       <TableHead>Agent</TableHead>
                       <TableHead>Matricule</TableHead>
                       <TableHead>Aeroport</TableHead>
-                      <TableHead>Statut</TableHead>
-                      <TableHead className="text-right">Action</TableHead>
+                      <TableHead>Recevabilite</TableHead>
+                      <TableHead className="text-right">Decision</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {agents.map((agent) => (
-                      <TableRow key={agent.id}>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">
-                              {agent.user?.firstName} {agent.user?.lastName}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {agent.fonction}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-mono">
-                          {agent.matricule}
-                        </TableCell>
-                        <TableCell>
-                          {agent.aeroport?.nom || agent.aeroportId}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
-                            {AGENT_STATUS_LABELS[agent.status as keyof typeof AGENT_STATUS_LABELS]}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button asChild size="sm" className="bg-primary hover:bg-primary/90">
-                          <Link to={`/app/dlaa/issue/${agent.id}`}>
-                            <Printer className="mr-1 h-3 w-3" />
-                            Delivrer licence
-                          </Link>
-                        </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {agents.map((agent) => {
+                      const requiredTypes = getRequiredLicenseDocumentTypes(agent);
+                      const docs = filterLicenseDocuments(agent.documents ?? []);
+                      const isReady = requiredTypes.every((type) =>
+                        docs.some((document) => document.type === type && document.status === 'VALIDE' && (!document.expiresAt || new Date(document.expiresAt) >= new Date()))
+                      );
+
+                      return (
+                        <TableRow key={agent.id}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">
+                                {agent.user?.firstName} {agent.user?.lastName}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {agent.fonction}
+                              </p>
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-mono">{agent.matricule}</TableCell>
+                          <TableCell>{agent.aeroport?.nom || agent.aeroportId}</TableCell>
+                          <TableCell>
+                            <Badge className={isReady ? 'bg-green-500/10 text-green-600 border-green-500/20' : 'bg-yellow-500/10 text-yellow-700 border-yellow-500/20'}>
+                              {isReady ? 'Pret pour emission' : 'Controle requis'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button asChild size="sm" variant="outline">
+                              <Link to={`/app/dlaa/review/${agent.id}`}>
+                                <ClipboardCheck className="mr-1 h-3 w-3" />
+                                Ouvrir dossier DLAA
+                              </Link>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               )}
             </CardContent>
           </Card>
-        </TabsContent>
 
-        <TabsContent value="issued" className="mt-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-green-700">
                 <Award className="h-5 w-5" />
-                Licences DLAA delivrees
+                Registre des licences DLAA
               </CardTitle>
               <CardDescription>
-                Historique des licences delivrees par DLAA
+                Historique d&apos;émission et statuts des licences
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -405,7 +376,7 @@ export default function DLAADashboard() {
                   <Award className="mb-4 h-12 w-12 text-muted-foreground" />
                   <h3 className="text-lg font-medium">Aucune licence emise</h3>
                   <p className="text-sm text-muted-foreground">
-                    Les licences emises apparaitront ici
+                    Les licences émises apparaîtront ici.
                   </p>
                 </div>
               ) : (
@@ -415,45 +386,105 @@ export default function DLAADashboard() {
                       <TableHead>Numero</TableHead>
                       <TableHead>Agent</TableHead>
                       <TableHead>Date emission</TableHead>
-                      <TableHead>Expiration</TableHead>
+                      <TableHead>Prochaine echeance</TableHead>
                       <TableHead>Statut</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {licenses.map((license) => (
-                      <TableRow key={license.id}>
-                        <TableCell className="font-mono text-sm">
-                          {license.numero}
-                        </TableCell>
-                        <TableCell>
-                          {license.agent?.user?.firstName} {license.agent?.user?.lastName}
-                        </TableCell>
-                        <TableCell>
-                          {format(new Date(license.dateEmission), 'dd/MM/yyyy', { locale: fr })}
-                        </TableCell>
-                        <TableCell>
-                          {format(new Date(license.dateExpiration), 'dd/MM/yyyy', { locale: fr })}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={
-                            license.status === 'ACTIVE' 
-                              ? 'bg-green-500/10 text-green-600 border-green-500/20'
-                              : license.status === 'EXPIREE'
-                              ? 'bg-red-500/10 text-red-600 border-red-500/20'
-                              : 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20'
-                          }>
-                            {LICENSE_STATUS_LABELS[license.status as keyof typeof LICENSE_STATUS_LABELS] || license.status}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {licenses.map((license) => {
+                      const monitoringDate = getLicenseMonitoringDate(license.agent, license);
+
+                      return (
+                        <TableRow key={license.id}>
+                          <TableCell className="font-mono text-sm">{license.numero}</TableCell>
+                          <TableCell>{license.agent?.user?.firstName} {license.agent?.user?.lastName}</TableCell>
+                          <TableCell>{format(new Date(license.dateEmission), 'dd/MM/yyyy', { locale: fr })}</TableCell>
+                          <TableCell>{monitoringDate ? format(monitoringDate, 'dd/MM/yyyy', { locale: fr }) : 'Selon les documents'}</TableCell>
+                          <TableCell>
+                            <Badge className={
+                              license.status === 'ACTIVE'
+                                ? 'bg-green-500/10 text-green-600 border-green-500/20'
+                                : license.status === 'EXPIREE'
+                                ? 'bg-red-500/10 text-red-600 border-red-500/20'
+                                : 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20'
+                            }>
+                              {LICENSE_STATUS_LABELS[license.status as keyof typeof LICENSE_STATUS_LABELS] || license.status}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+        </div>
+
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-600" />
+                Expirations à surveiller
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {expiringLicenses.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Aucun dossier licence n&apos;a d&apos;echeance documentaire dans les 60 prochains jours.
+                </p>
+              ) : (
+                expiringLicenses.map((license) => {
+                  const monitoringDate = getLicenseMonitoringDate(license.agent, license);
+
+                  return (
+                    <div key={license.id} className="rounded-lg border p-3">
+                      <p className="font-medium">{license.numero}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {license.agent?.user?.firstName} {license.agent?.user?.lastName}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Echeance documentaire le {monitoringDate ? format(monitoringDate, 'dd MMM yyyy', { locale: fr }) : 'a confirmer'}
+                      </p>
+                    </div>
+                  );
+                })
+              )}
+            </CardContent>
+          </Card>
+
+          {agentsWithStats.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileCheck className="h-5 w-5" />
+                  Vision consolidée dossiers
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {agentsWithStats.slice(0, 5).map((agent) => {
+                  const progress = agent.documentStats.total > 0
+                    ? (agent.documentStats.validated / agent.documentStats.total) * 100
+                    : 0;
+                  return (
+                    <div key={agent.id} className="rounded-lg border p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="font-medium">{agent.firstName} {agent.lastName}</p>
+                          <p className="text-xs text-muted-foreground">{agent.matricule} • {agent.aeroport}</p>
+                        </div>
+                        <Badge variant="outline">{AGENT_STATUS_LABELS[agent.status as keyof typeof AGENT_STATUS_LABELS] || agent.status}</Badge>
+                      </div>
+                      <Progress value={progress} className="mt-3 h-2" />
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

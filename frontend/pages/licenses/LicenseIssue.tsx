@@ -3,8 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { agentsApi, licensesApi } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
@@ -20,6 +18,8 @@ import { AGENT_STATUS_LABELS, DOCUMENT_TYPE_LABELS } from '@shared/types';
 import type { Agent } from '@shared/types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { filterLicenseDocuments, getRequiredLicenseDocumentTypes } from '@/lib/priority-documents';
+import { getLicenseValiditySnapshot } from '@/lib/license-validity';
 
 export default function LicenseIssue() {
   const { id } = useParams<{ id: string }>();
@@ -27,7 +27,6 @@ export default function LicenseIssue() {
   const [agent, setAgent] = useState<Agent | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [validityYears, setValidityYears] = useState('2');
 
   useEffect(() => {
     const fetchAgent = async () => {
@@ -58,7 +57,6 @@ export default function LicenseIssue() {
     try {
       const response = await licensesApi.issue({
         agentId: agent.id,
-        validityYears: parseInt(validityYears)
       });
 
       if (response.success) {
@@ -84,7 +82,10 @@ export default function LicenseIssue() {
     return null;
   }
 
-  const allDocsValid = agent.documents?.every(d => d.status === 'VALIDE') || false;
+  const priorityDocuments = filterLicenseDocuments(agent.documents ?? []);
+  const requiredDocumentTypes = getRequiredLicenseDocumentTypes(agent);
+  const validity = getLicenseValiditySnapshot(agent);
+  const allDocsValid = validity.allRequiredDocumentsValid;
 
   return (
     <div className="space-y-6">
@@ -131,11 +132,11 @@ export default function LicenseIssue() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Employeur</p>
-                  <p className="font-medium">{agent.employeur}</p>
+                  <p className="font-medium">{agent.employeur?.nom || agent.employeurId}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Aeroport</p>
-                  <p className="font-medium">{agent.aeroport}</p>
+                  <p className="font-medium">{agent.aeroport?.nom || agent.aeroportId}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Statut</p>
@@ -152,15 +153,15 @@ export default function LicenseIssue() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
-                Documents verifies
+                Documents requis verifies
               </CardTitle>
               <CardDescription>
-                Tous les documents ont ete valides par le QIP
+                Les documents requis pour la licence sont controles ici
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {agent.documents?.map((doc) => (
+                {priorityDocuments.map((doc) => (
                   <div 
                     key={doc.id}
                     className="flex items-center justify-between rounded-lg border p-3"
@@ -192,23 +193,6 @@ export default function LicenseIssue() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Duree de validite</Label>
-                <Select value={validityYears} onValueChange={setValidityYears}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">1 an</SelectItem>
-                    <SelectItem value="2">2 ans</SelectItem>
-                    <SelectItem value="3">3 ans</SelectItem>
-                    <SelectItem value="5">5 ans</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Date d&apos;emission</span>
                   <span className="font-medium">
@@ -216,18 +200,20 @@ export default function LicenseIssue() {
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Date d&apos;expiration</span>
+                  <span className="text-muted-foreground">Prochaine echeance documentaire</span>
                   <span className="font-medium">
-                    {format(
-                      new Date(new Date().setFullYear(new Date().getFullYear() + parseInt(validityYears))),
-                      'dd/MM/yyyy',
-                      { locale: fr }
-                    )}
+                    {validity.nextExpiry
+                      ? format(validity.nextExpiry, 'dd/MM/yyyy', { locale: fr })
+                      : 'Valide tant que les documents le sont'}
                   </span>
                 </div>
               </div>
 
               <Separator />
+
+              <p className="text-sm text-muted-foreground">
+                La licence n&apos;a pas de duree autonome. Elle reste active tant que tous les documents requis restent valides.
+              </p>
 
               <Button
                 onClick={handleIssueLicense}
@@ -247,7 +233,7 @@ export default function LicenseIssue() {
 
               {!allDocsValid && (
                 <p className="text-xs text-center text-destructive">
-                  Tous les documents doivent etre valides
+                  Tous les documents requis doivent etre valides et non expires
                 </p>
               )}
             </CardContent>

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Search, Award, FileCheck, Clock, Printer, Eye, Download } from 'lucide-react';
-import { api, LicenseStatus } from '@/lib/api';
+import { api } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
 interface ApprovedAgent {
@@ -26,7 +26,7 @@ interface ApprovedAgent {
     id: string;
     number: string;
     validFrom: string;
-    validUntil: string;
+    validUntil?: string;
   };
 }
 
@@ -60,7 +60,6 @@ export default function DLAAIssuance() {
 
   const [issueFormData, setIssueFormData] = useState({
     licenseType: 'AEROPORT',
-    validityYears: '1',
     notes: '',
   });
 
@@ -72,7 +71,7 @@ export default function DLAAIssuance() {
     try {
       setLoading(true);
       const response = await api.get('/licenses/pending');
-      setAgents(response.data);
+      setAgents((response.data as { success: boolean; data: ApprovedAgent[] }).data ?? []);
     } catch (error) {
       // Mock data for demo
       setAgents([
@@ -133,7 +132,6 @@ export default function DLAAIssuance() {
       await api.post('/licenses/issue', {
         agentId: selectedAgent.id,
         type: issueFormData.licenseType,
-        validityYears: parseInt(issueFormData.validityYears),
         notes: issueFormData.notes,
       });
       toast({
@@ -146,7 +144,7 @@ export default function DLAAIssuance() {
     } catch (error: any) {
       toast({
         title: 'Erreur',
-        description: error.response?.data?.message || 'Erreur lors de l\'emission',
+        description: error instanceof Error ? error.message : 'Erreur lors de l\'emission',
         variant: 'destructive',
       });
     }
@@ -164,7 +162,7 @@ export default function DLAAIssuance() {
     } catch (error: any) {
       toast({
         title: 'Erreur',
-        description: error.response?.data?.message || 'Erreur lors de l\'impression',
+        description: error instanceof Error ? error.message : 'Erreur lors de l\'impression',
         variant: 'destructive',
       });
     }
@@ -174,7 +172,6 @@ export default function DLAAIssuance() {
     setSelectedAgent(agent);
     setIssueFormData({
       licenseType: agent.licenseType || 'AEROPORT',
-      validityYears: '1',
       notes: '',
     });
     setIssueModalOpen(true);
@@ -400,22 +397,8 @@ export default function DLAAIssuance() {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="validity">Duree de Validite</Label>
-                <Select
-                  value={issueFormData.validityYears}
-                  onValueChange={(value) => setIssueFormData({ ...issueFormData, validityYears: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">1 an</SelectItem>
-                    <SelectItem value="2">2 ans</SelectItem>
-                    <SelectItem value="3">3 ans</SelectItem>
-                    <SelectItem value="5">5 ans</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
+                La licence reste active tant que les documents requis de l&apos;agent restent valides. La prochaine echeance sera donc pilotee par les pieces justificatives, pas par une duree fixe.
               </div>
 
               <div className="space-y-2">

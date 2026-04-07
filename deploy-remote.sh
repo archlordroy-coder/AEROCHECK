@@ -22,8 +22,10 @@ REMOTE_HOST=${SERVER_IP:-"82.165.150.150"}
 REMOTE_DIR=${DEST_DIR:-"/var/www/AEROCHECK"}
 DOMAIN=${DOMAIN:-$REMOTE_HOST}
 SOURCE_DIR="$(pwd)"
-APP_PORT=${PORT:-${API_PORT:-3500}}
+APP_PORT=${PORT:-${API_PORT:-3501}}
+FRONT_PORT=${FRONTEND_PORT:-3502}
 PM2_NAME=${PM2_NAME:-"aerocheck-backend"}
+FRONTEND_PM2_NAME=${FRONTEND_PM2_NAME:-"aerocheck-frontend"}
 SERVER_PASS=${SERVER_PASS:-""}
 
 # SSH Control socket pour connexion persistante
@@ -34,7 +36,7 @@ SSH_OPT="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ControlM
 
 # Configuration SSH avec mot de passe
 if [ -n "$SERVER_PASS" ]; then
-    if ! command -v sshpass &> /dev/null; then
+    if ! command -v sshpass >/dev/null 2>&1; then
         echo "❌ ERREUR: sshpass n'est pas installé"
         echo "Installez-le: sudo apt-get install sshpass"
         exit 1
@@ -49,7 +51,8 @@ fi
 
 echo "🚀 Démarrage du déploiement AEROCHECK"
 echo "   Serveur: $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR"
-echo "   Port applicatif: $APP_PORT"
+echo "   Port backend: $APP_PORT"
+echo "   Port frontend: $FRONT_PORT"
 echo "   Domaine: $DOMAIN"
 echo ""
 
@@ -137,17 +140,10 @@ $SSH_CMD $REMOTE_USER@$REMOTE_HOST "
     if [ -f $REMOTE_DIR/.env ]; then
         echo '   ✅ Fichier .env présent'
         echo '   Variables détectées (.env):'
-        grep -E '^(PORT|API_PORT|DATABASE_URL|CORS_ORIGINS|JWT_SECRET)=' $REMOTE_DIR/.env | cut -d= -f1 | sed 's/^/      /' || true
+        grep -E '^(PORT|API_PORT|FRONTEND_PORT|API_BASE_URL|FRONTEND_URL|VITE_API_URL|DATABASE_URL|CORS_ORIGINS|JWT_SECRET)=' $REMOTE_DIR/.env | cut -d= -f1 | sed 's/^/      /' || true
     else
-        echo '   ⚠️  Fichier .env manquant! Création d'un fichier par défaut...'
-        cat > $REMOTE_DIR/.env << 'EOF'
-PORT=3001
-DATABASE_URL=\"file:./prisma/dev.db\"
-JWT_SECRET=votre_secret_jwt_a_changer_en_production
-CORS_ORIGINS=http://localhost:8080,https://$DOMAIN
-NODE_ENV=production
-EOF
-        echo '   ✅ .env créé avec les valeurs par défaut'
+        echo '   ❌ Fichier .env manquant sur le serveur'
+        exit 1
     fi
 "
 
@@ -169,7 +165,7 @@ $SSH_CMD $REMOTE_USER@$REMOTE_HOST "
     fi
     
     # Installer PM2 si nécessaire
-    if ! command -v pm2 &> /dev/null; then
+    if ! command -v pm2 >/dev/null 2>&1; then
         echo '   📦 Installation de PM2...'
         npm install -g pm2
     fi
@@ -185,6 +181,12 @@ $SSH_CMD $REMOTE_USER@$REMOTE_HOST "
     # Initialisation de la base SQLite (sans Prisma)
     echo '   🗄️  Initialisation SQLite...'
     npm run db:init
+
+    cd $REMOTE_DIR/frontend
+    echo '   📦 npm install frontend...'
+    npm ci
+    echo '   🔨 npm run build frontend...'
+    VITE_API_URL=http://$REMOTE_HOST:$APP_PORT npm run build
 " || { echo "❌ Échec du build sur le serveur"; exit 1; }
 
 # ============================================
@@ -211,12 +213,15 @@ $SSH_CMD $REMOTE_USER@$REMOTE_HOST "
     . ./.env
     set +a
     
-    # Arrêter l'ancienne instance si elle existe
+    # Arrêter les anciennes instances si elles existent
     pm2 delete $PM2_NAME 2>/dev/null || true
+    pm2 delete $FRONTEND_PM2_NAME 2>/dev/null || true
     
-    # Démarrer la nouvelle instance
-    pm2 start ecosystem.config.js --env production --update-env || \
-    pm2 start ./backend/dist/index.js --name $PM2_NAME --update-env -- --port $APP_PORT
+    # Démarrer les nouvelles instances
+    pm2 start ecosystem.config.cjs --env production --update-env || {
+        pm2 start ./backend/dist/backend/src/index.js --name $PM2_NAME --update-env -- --port $APP_PORT
+        pm2 start npm --name $FRONTEND_PM2_NAME --cwd $REMOTE_DIR/frontend -- run preview -- --host 0.0.0.0 --port $FRONT_PORT
+    }
     
     # Sauvegarder la configuration
     pm2 save
@@ -257,6 +262,15 @@ if [ "$HEALTH_PASSED" = false ]; then
     exit 1
 fi
 
+echo "🔍 Frontend check..."
+FRONTEND_RESPONSE=$($SSH_CMD $REMOTE_USER@$REMOTE_HOST "curl -s -I http://localhost:$FRONT_PORT 2>/dev/null | head -n 1 || echo ''")
+if [[ "$FRONTEND_RESPONSE" != *"200"* ]] && [[ "$FRONTEND_RESPONSE" != *"304"* ]]; then
+    echo "⚠️  Frontend check non concluant"
+    echo "📋 Logs PM2 frontend:"
+    $SSH_CMD $REMOTE_USER@$REMOTE_HOST "pm2 logs $FRONTEND_PM2_NAME --lines 20 || true"
+    exit 1
+fi
+
 # ============================================
 # 9. RÉSUMÉ
 # ============================================
@@ -269,12 +283,14 @@ echo ""
 echo "📍 Informations d'accès:"
 echo "   Health Check: http://$REMOTE_HOST:$APP_PORT/api/health"
 echo "   API:          http://$REMOTE_HOST:$APP_PORT/api"
-echo "   Frontend:     http://$DOMAIN (si configuré)"
+echo "   Frontend:     http://$REMOTE_HOST:$FRONT_PORT"
 echo ""
 echo "🔧 Commandes PM2 utiles:"
 echo "   pm2 status                    - Voir le statut"
 echo "   pm2 logs $PM2_NAME           - Voir les logs"
+echo "   pm2 logs $FRONTEND_PM2_NAME  - Voir les logs frontend"
 echo "   pm2 restart $PM2_NAME      - Redémarrer"
+echo "   pm2 restart $FRONTEND_PM2_NAME - Redémarrer le frontend"
 echo "   pm2 stop $PM2_NAME         - Arrêter"
 echo ""
 echo "🚀 Déploiement complet!"

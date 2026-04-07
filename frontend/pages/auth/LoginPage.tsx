@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import appLogo from "@/logo/logosansfond.png";
+const appLogo = "/favicon.svg";
 import { Lock, Mail, ArrowLeft, Home } from 'lucide-react';
 
 export default function LoginPage() {
@@ -23,6 +23,7 @@ export default function LoginPage() {
     try {
       await login(email, password);
       toast.success('Connexion reussie');
+      navigate('/app/dashboard');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Erreur de connexion');
     } finally {

@@ -1,242 +1,166 @@
-import { Router, Response } from 'express';
+import express from 'express';
 import bcrypt from 'bcryptjs';
-import { z } from 'zod';
-import { prisma } from '../index.js';
-import { authenticate, generateToken, AuthRequest } from '../middleware/auth.js';
-import { AppError } from '../middleware/errorHandler.js';
+import { addUser, createId, getAgentByUserId, getUserRecordById, getUserRecordByEmail, listUsers, sanitizeUser, saveUser, verifyPassword } from '../db.js';
+import { authenticate, authorize, generateToken, type AuthRequest } from '../middleware/auth.js';
+import type { RegisterRequest, Role } from '../../shared/types/index.js';
+import { asTrimmedString, pickEnumValue, parseBoolean } from '../utils/validators.js';
 
-const router = Router();
+const router = express.Router();
+const ROLES = ['AGENT', 'QIP', 'DLAA', 'DNA', 'SUPER_ADMIN'] as const satisfies readonly Role[];
 
-const registerSchema = z.object({
-  email: z.string().email('Email invalide'),
-  password: z.string().min(6, 'Mot de passe minimum 6 caracteres'),
-  firstName: z.string().min(2, 'Prenom requis'),
-  lastName: z.string().min(2, 'Nom requis'),
-  phone: z.string().optional(),
-  role: z.enum(['AGENT', 'QIP', 'DLAA', 'DNA', 'SUPER_ADMIN']).optional(),
-  // ATCO specific fields
-  matricule: z.string().min(3, 'Matricule requis').optional(),
-  paysId: z.string().optional(),
-  aeroportId: z.string().optional(),
-  sexe: z.enum(['M', 'F']).optional(),
-  qualifications: z.array(z.string()).optional(),
-  whatsapp: z.string().optional(),
-  dateNaissance: z.string().optional()
-});
+router.post('/login', (req, res) => {
+  const email = asTrimmedString(req.body?.email)?.toLowerCase();
+  const password = asTrimmedString(req.body?.password);
 
-const loginSchema = z.object({
-  email: z.string().email('Email invalide'),
-  password: z.string().min(1, 'Mot de passe requis')
-});
-
-// Register
-router.post('/register', async (req, res, next) => {
-  try {
-    const data = registerSchema.parse(req.body);
-
-    const existingUser = await prisma.user.findUnique({
-      where: { email: data.email }
-    });
-
-    if (existingUser) {
-      throw new AppError('Cet email est deja utilise', 400);
-    }
-
-    // Check if matricule is already used
-    if (data.matricule) {
-      const existingAgent = await prisma.agent.findUnique({
-        where: { matricule: data.matricule }
-      });
-      if (existingAgent) {
-        throw new AppError('Ce matricule est deja utilise', 400);
-      }
-    }
-
-    const hashedPassword = await bcrypt.hash(data.password, 12);
-
-    const user = await prisma.user.create({
-      data: {
-        email: data.email,
-        password: hashedPassword,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        phone: data.phone,
-        role: data.role || 'AGENT'
-      }
-    });
-
-    // Create agent record if ATCO-specific fields are provided
-    let agent = null;
-    if (data.matricule && data.paysId && data.aeroportId) {
-      // Get or create default nationalite
-      let nationaliteId = 'cm500000000000000000000001'; // Default: Sénégal
-      const nationalite = await prisma.nationalite.findFirst();
-      if (nationalite) {
-        nationaliteId = nationalite.id;
-      }
-
-      // Get or create default employeur
-      let employeurId = 'cm500000000000000000000001'; // Default: ASECNA
-      const employeur = await prisma.employeur.findFirst();
-      if (employeur) {
-        employeurId = employeur.id;
-      }
-
-      agent = await prisma.agent.create({
-        data: {
-          userId: user.id,
-          matricule: data.matricule,
-          paysId: data.paysId,
-          aeroportId: data.aeroportId,
-          sexe: data.sexe,
-          whatsapp: data.whatsapp,
-          qualifications: data.qualifications ? JSON.stringify(data.qualifications) : null,
-          nationaliteId: nationaliteId,
-          employeurId: employeurId,
-          dateNaissance: data.dateNaissance ? new Date(data.dateNaissance) : new Date(),
-          lieuNaissance: 'Non specifie',
-          adresse: 'Non specifie',
-          fonction: 'Controleur Aerien',
-          emailVerified: false
-        }
-      });
-    }
-
-    const token = generateToken(user.id);
-
-    res.status(201).json({
-      success: true,
-      data: {
-        user: {
-          id: user.id,
-          email: user.email,
-          role: user.role,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          phone: user.phone,
-          agent: agent
-        },
-        token
-      }
-    });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      res.status(400).json({
-        success: false,
-        error: error.errors[0].message
-      });
-      return;
-    }
-    next(error);
+  if (!email || !password) {
+    res.status(400).json({ success: false, error: 'Email et mot de passe requis' });
+    return;
   }
-});
 
-// Login
-router.post('/login', async (req, res, next) => {
-  try {
-    const data = loginSchema.parse(req.body);
-
-    const user = await prisma.user.findUnique({
-      where: { email: data.email }
-    });
-
-    if (!user) {
-      throw new AppError('Email ou mot de passe incorrect', 401);
-    }
-
-    const isValidPassword = await bcrypt.compare(data.password, user.password);
-
-    if (!isValidPassword) {
-      throw new AppError('Email ou mot de passe incorrect', 401);
-    }
-
-    const token = generateToken(user.id);
-
-    const userWithAgent = await prisma.user.findUnique({
-      where: { id: user.id },
-      include: { agent: true }
-    });
-
-    res.json({
-      success: true,
-      data: {
-        user: {
-          id: user.id,
-          email: user.email,
-          role: user.role,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          phone: user.phone,
-          agent: userWithAgent?.agent || null
-        },
-        token
-      }
-    });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      res.status(400).json({
-        success: false,
-        error: error.errors[0].message
-      });
-      return;
-    }
-    next(error);
-  }
-});
-
-// Get current user
-router.get('/me', authenticate, async (req: AuthRequest, res) => {
-  const user = await prisma.user.findUnique({
-    where: { id: req.user!.id },
-    include: { agent: true }
-  });
-
-  if (!user) {
-    throw new AppError('Utilisateur non trouve', 404);
+  const user = getUserRecordByEmail(email);
+  if (!user || !user.isActive || !verifyPassword(password, user.passwordHash)) {
+    res.status(401).json({ success: false, error: 'Identifiants invalides' });
+    return;
   }
 
   res.json({
     success: true,
     data: {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      phone: user.phone,
-      agent: user.agent
-    }
+      token: generateToken(user.id),
+      user: sanitizeUser(user),
+    },
   });
 });
 
-// Get all users (admin only)
-router.get('/users', authenticate, async (req: AuthRequest, res, next) => {
-  try {
-    // Only admin/superadmin can list all users
-    if (!['SUPER_ADMIN', 'DNA'].includes(req.user!.role)) {
-      throw new AppError('Acces refuse', 403);
-    }
+router.post('/register', (req, res) => {
+  const payload = req.body as RegisterRequest & { role?: Role };
+  const email = asTrimmedString(payload.email)?.toLowerCase();
+  const password = asTrimmedString(payload.password);
+  const firstName = asTrimmedString(payload.firstName);
+  const lastName = asTrimmedString(payload.lastName);
+  const role = pickEnumValue(payload.role, ROLES) ?? 'AGENT';
 
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        isActive: true,
-        createdAt: true
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    res.json({
-      success: true,
-      data: users
-    });
-  } catch (error) {
-    next(error);
+  if (!email || !password || !firstName || !lastName) {
+    res.status(400).json({ success: false, error: 'Champs requis manquants' });
+    return;
   }
+
+  if (payload.role && !pickEnumValue(payload.role, ROLES)) {
+    res.status(400).json({ success: false, error: 'Role invalide' });
+    return;
+  }
+
+  if (getUserRecordByEmail(email)) {
+    res.status(409).json({ success: false, error: 'Cet email existe deja' });
+    return;
+  }
+
+  const user = addUser({
+    id: createId('user'),
+    email,
+    role,
+    firstName,
+    lastName,
+    phone: asTrimmedString(payload.phone),
+    paysId: asTrimmedString(payload.paysId),
+    aeroportId: asTrimmedString(payload.aeroportId),
+    passwordHash: bcrypt.hashSync(password, 10),
+    isActive: true,
+  });
+
+  res.status(201).json({
+    success: true,
+    data: {
+      token: generateToken(user.id),
+      user: sanitizeUser(user),
+    },
+  });
+});
+
+router.get('/me', authenticate, (req: AuthRequest, res) => {
+  const user = req.user ? getUserRecordById(req.user.id) : undefined;
+  if (!user) {
+    res.status(401).json({ success: false, error: 'Utilisateur non authentifie' });
+    return;
+  }
+
+  const safeUser = sanitizeUser(user);
+  const agent = getAgentByUserId(user.id);
+  res.json({
+    success: true,
+    data: {
+      ...safeUser,
+      pays: user.paysId,
+      aeroport: user.aeroportId,
+      ...(agent ? { agent } : {}),
+    },
+  });
+});
+
+router.get('/users', authenticate, authorize('SUPER_ADMIN', 'DNA'), (_req, res) => {
+  res.json({
+    success: true,
+    data: listUsers().map((user) => ({
+      ...sanitizeUser(user),
+      isActive: user.isActive,
+    })),
+  });
+});
+
+router.patch('/users/:id', authenticate, authorize('SUPER_ADMIN', 'DNA'), (req, res) => {
+  const user = getUserRecordById(req.params.id);
+  if (!user) {
+    res.status(404).json({ success: false, error: 'Utilisateur introuvable' });
+    return;
+  }
+
+  const { firstName, lastName, role } = req.body as Partial<{ firstName: string; lastName: string; role: Role }>;
+  const nextFirstName = firstName === undefined ? undefined : asTrimmedString(firstName);
+  const nextLastName = lastName === undefined ? undefined : asTrimmedString(lastName);
+  const nextRole = role === undefined ? undefined : pickEnumValue(role, ROLES);
+
+  if (firstName !== undefined && !nextFirstName) {
+    res.status(400).json({ success: false, error: 'Le prenom est invalide' });
+    return;
+  }
+
+  if (lastName !== undefined && !nextLastName) {
+    res.status(400).json({ success: false, error: 'Le nom est invalide' });
+    return;
+  }
+
+  if (role !== undefined && !nextRole) {
+    res.status(400).json({ success: false, error: 'Role invalide' });
+    return;
+  }
+
+  if (nextFirstName) user.firstName = nextFirstName;
+  if (nextLastName) user.lastName = nextLastName;
+  if (nextRole) user.role = nextRole;
+  user.updatedAt = new Date().toISOString();
+  const savedUser = saveUser(user);
+
+  res.json({ success: true, data: { ...sanitizeUser(savedUser), isActive: savedUser.isActive } });
+});
+
+router.patch('/users/:id/status', authenticate, authorize('SUPER_ADMIN', 'DNA'), (req, res) => {
+  const user = getUserRecordById(req.params.id);
+  if (!user) {
+    res.status(404).json({ success: false, error: 'Utilisateur introuvable' });
+    return;
+  }
+
+  const isActive = parseBoolean(req.body?.isActive);
+  if (isActive === undefined) {
+    res.status(400).json({ success: false, error: 'Le statut d activation est invalide' });
+    return;
+  }
+
+  user.isActive = isActive;
+  user.updatedAt = new Date().toISOString();
+  const savedUser = saveUser(user);
+
+  res.json({ success: true, data: { ...sanitizeUser(savedUser), isActive: savedUser.isActive } });
 });
 
 export default router;

@@ -47,10 +47,10 @@ const statusColors: Record<string, string> = {
 };
 
 const docStatusColors: Record<DocumentStatus, string> = {
-  PENDING: 'bg-amber-100 text-amber-800',
-  VERIFIED: 'bg-emerald-100 text-emerald-800',
-  REJECTED: 'bg-red-100 text-red-800',
-  EXPIRED: 'bg-gray-100 text-gray-800',
+  EN_ATTENTE: 'bg-amber-100 text-amber-800',
+  VALIDE: 'bg-emerald-100 text-emerald-800',
+  REJETE: 'bg-red-100 text-red-800',
+  EXPIRE: 'bg-gray-100 text-gray-800',
 };
 
 export default function QIPVerification() {
@@ -70,7 +70,7 @@ export default function QIPVerification() {
     try {
       setLoading(true);
       const response = await api.get('/documents/pending');
-      setAgents(response.data);
+      setAgents((response.data as { success: boolean; data: PendingAgent[] }).data ?? []);
     } catch (error) {
       // Mock data for demo
       setAgents([
@@ -119,7 +119,7 @@ export default function QIPVerification() {
   const fetchAgentDocuments = async (agentId: string) => {
     try {
       const response = await api.get(`/documents/agent/${agentId}`);
-      setAgentDocuments(response.data);
+      setAgentDocuments((response.data as { success: boolean; data: DocumentDetail[] }).data ?? []);
     } catch (error) {
       // Mock data for demo
       setAgentDocuments([
@@ -127,7 +127,7 @@ export default function QIPVerification() {
           id: '1',
           type: 'CNI',
           fileName: 'cni_amadou_diallo.pdf',
-          status: 'VERIFIED',
+          status: 'VALIDE',
           uploadedAt: '2024-03-10',
           verifiedAt: '2024-03-12',
           verifiedBy: 'Ibrahima Ba',
@@ -136,7 +136,7 @@ export default function QIPVerification() {
           id: '2',
           type: 'Certificat Medical',
           fileName: 'certificat_medical.pdf',
-          status: 'VERIFIED',
+          status: 'VALIDE',
           uploadedAt: '2024-03-10',
           verifiedAt: '2024-03-12',
           verifiedBy: 'Ibrahima Ba',
@@ -145,7 +145,7 @@ export default function QIPVerification() {
           id: '3',
           type: 'Casier Judiciaire',
           fileName: 'casier_judiciaire.pdf',
-          status: 'VERIFIED',
+          status: 'VALIDE',
           uploadedAt: '2024-03-10',
           verifiedAt: '2024-03-13',
           verifiedBy: 'Ibrahima Ba',
@@ -154,14 +154,14 @@ export default function QIPVerification() {
           id: '4',
           type: 'Diplome/Formation',
           fileName: 'diplome_formation.pdf',
-          status: 'PENDING',
+          status: 'EN_ATTENTE',
           uploadedAt: '2024-03-11',
         },
         {
           id: '5',
           type: 'Photo d\'identite',
           fileName: 'photo_identite.jpg',
-          status: 'PENDING',
+          status: 'EN_ATTENTE',
           uploadedAt: '2024-03-11',
         },
       ]);
@@ -185,14 +185,14 @@ export default function QIPVerification() {
       setAgentDocuments((prev) =>
         prev.map((doc) =>
           doc.id === docId
-            ? { ...doc, status: approve ? 'VERIFIED' : 'REJECTED' }
+            ? { ...doc, status: approve ? 'VALIDE' : 'REJETE' }
             : doc
         )
       );
     } catch (error: any) {
       toast({
         title: 'Erreur',
-        description: error.response?.data?.message || 'Erreur lors de la verification',
+        description: error instanceof Error ? error.message : 'Erreur lors de la verification',
         variant: 'destructive',
       });
     }

@@ -7,15 +7,17 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import appLogo from "@/logo/logosansfond.png";
+const appLogo = "/favicon.svg";
 import { Lock, Mail, User, Phone, Calendar, MapPin, Briefcase, GraduationCap, Loader2, ArrowLeft, Home } from 'lucide-react';
 import { referencesApi } from '@/lib/api';
 
 const QUALIFICATIONS_OPTIONS = [
   'ADC',
   'APP',
-  'ACC',
-  'APS'
+  'APS',
+  'ACP',
+  'ACS',
+  'ARP',
 ];
 
 export default function RegisterPage() {

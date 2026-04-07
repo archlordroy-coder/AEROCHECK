@@ -11,13 +11,7 @@ import { toast } from 'sonner';
 import { FileUp, Upload, CheckCircle, Clock, XCircle, AlertCircle, ArrowLeft } from 'lucide-react';
 import { DOCUMENT_TYPE_LABELS, DOC_STATUS_LABELS } from '@shared/types';
 import type { Agent, Document, DocumentType } from '@shared/types';
-
-const DOC_TYPES: DocumentType[] = [
-  'CERTIFICAT_MEDICAL',
-  'CONTROLE_COMPETENCE',
-  'NIVEAU_ANGLAIS'
-];
-const LICENSE_DOC_TYPES: DocumentType[] = [...DOC_TYPES, 'JUSTIFICATIF_NOMINATION'];
+import { getRequiredLicenseDocumentTypes, requiresJustificatif } from '@/lib/priority-documents';
 
 export default function DocumentSubmit() {
   const navigate = useNavigate();
@@ -55,12 +49,7 @@ export default function DocumentSubmit() {
     const submittedTypes = documents
       .filter(d => d.status !== 'REJETE')
       .map(d => d.type);
-    const baseTypes = DOC_TYPES.filter(t => !submittedTypes.includes(t));
-    const needJustificatif = Boolean(agent?.instructeur || (agent?.posteAdministratif && agent.posteAdministratif !== 'AUCUN'));
-    if (needJustificatif && !submittedTypes.includes('JUSTIFICATIF_NOMINATION')) {
-      return [...baseTypes, 'JUSTIFICATIF_NOMINATION'];
-    }
-    return baseTypes;
+    return getRequiredLicenseDocumentTypes(agent ?? undefined).filter((type) => !submittedTypes.includes(type));
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -179,8 +168,9 @@ export default function DocumentSubmit() {
   }
 
   const availableTypes = getAvailableTypes();
-  const requiredDocCount = Boolean(agent.instructeur || (agent.posteAdministratif && agent.posteAdministratif !== 'AUCUN')) ? 4 : 3;
-  const progress = (documents.filter(d => d.status !== 'REJETE' && LICENSE_DOC_TYPES.includes(d.type)).length / requiredDocCount) * 100;
+  const requiredDocumentTypes = getRequiredLicenseDocumentTypes(agent);
+  const requiredDocCount = requiredDocumentTypes.length;
+  const progress = (documents.filter((d) => d.status !== 'REJETE' && requiredDocumentTypes.includes(d.type)).length / requiredDocCount) * 100;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -193,7 +183,7 @@ export default function DocumentSubmit() {
             Soumettre des documents
           </h1>
           <p className="text-muted-foreground">
-            Telechargez les documents requis pour votre dossier
+            3 documents obligatoires, plus un justificatif si vous etes instructeur ou occupez un poste administratif
           </p>
         </div>
       </div>
@@ -207,7 +197,7 @@ export default function DocumentSubmit() {
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <div className="mb-2 flex justify-between text-sm">
-                <span>{documents.filter(d => d.status !== 'REJETE' && LICENSE_DOC_TYPES.includes(d.type)).length}/{requiredDocCount} documents</span>
+                <span>{documents.filter((d) => d.status !== 'REJETE' && requiredDocumentTypes.includes(d.type)).length}/{requiredDocCount} documents</span>
                 <span>{Math.round(progress)}%</span>
               </div>
               <div className="h-2 w-full rounded-full bg-muted">
@@ -231,7 +221,7 @@ export default function DocumentSubmit() {
                 Nouveau document
               </CardTitle>
               <CardDescription>
-                Selectionnez le type et telechargez votre document
+                Ajoutez la date de delivrance pour calculer automatiquement la validite
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
@@ -302,6 +292,24 @@ export default function DocumentSubmit() {
                     </div>
                   )}
 
+                  {selectedType === 'CERTIFICAT_MEDICAL' && (
+                    <p className="text-xs text-muted-foreground">
+                      Validite calculee automatiquement: 2 ans si l&apos;agent a moins de 40 ans, sinon 1 an.
+                    </p>
+                  )}
+
+                  {selectedType === 'CONTROLE_COMPETENCE' && (
+                    <p className="text-xs text-muted-foreground">
+                      Validite appliquee: 2 ans.
+                    </p>
+                  )}
+
+                  {selectedType === 'JUSTIFICATIF_NOMINATION' && (
+                    <p className="text-xs text-muted-foreground">
+                      Ce document est requis uniquement pour les instructeurs et postes administratifs.
+                    </p>
+                  )}
+
                   <Button
                     type="submit"
                     className="h-11 w-full shadow-md"
@@ -353,7 +361,7 @@ export default function DocumentSubmit() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {[...DOC_TYPES, ...(Boolean(agent.instructeur || (agent.posteAdministratif && agent.posteAdministratif !== 'AUCUN')) ? (['JUSTIFICATIF_NOMINATION'] as DocumentType[]) : [])].map((docType) => {
+              {requiredDocumentTypes.map((docType) => {
                 const doc = documents.find(d => d.type === docType);
                 
                 return (
@@ -371,7 +379,13 @@ export default function DocumentSubmit() {
                         </p>
                         {doc && (
                           <p className="text-xs text-muted-foreground">
-                            {doc.fileName}
+                        {doc.fileName}
+                      </p>
+                        )}
+                        {doc?.issuedAt && (
+                          <p className="text-xs text-muted-foreground">
+                            Delivre le {new Date(doc.issuedAt).toLocaleDateString('fr-FR')}
+                            {doc.expiresAt ? ` • Expire le ${new Date(doc.expiresAt).toLocaleDateString('fr-FR')}` : ' • Valide a vie'}
                           </p>
                         )}
                       </div>
@@ -388,6 +402,11 @@ export default function DocumentSubmit() {
                 );
               })}
             </div>
+            {requiresJustificatif(agent) && (
+              <p className="mt-4 text-xs text-amber-600">
+                Le justificatif de nomination s&apos;ajoute parce que vous etes instructeur ou occupez un poste administratif.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

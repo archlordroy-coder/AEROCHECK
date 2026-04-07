@@ -5,7 +5,7 @@ import { overviewData } from "./data";
 
 export function createServer() {
   const app = express();
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:8080";
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3502";
 
   app.use(
     cors({
@@ -20,7 +20,7 @@ export function createServer() {
     res.json({
       message: process.env.PING_MESSAGE ?? "AEROCHECK API ready",
       status: "ok",
-      apiBaseUrl: process.env.API_BASE_URL || `http://localhost:${process.env.API_PORT || 3000}`,
+      apiBaseUrl: process.env.API_BASE_URL || `http://localhost:${process.env.API_PORT || 3501}`,
     });
   });
 

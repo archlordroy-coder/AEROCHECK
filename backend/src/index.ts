@@ -4,7 +4,8 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-import { PrismaClient } from '@prisma/client';
+import './db.js'; // Initialize database
+import { getDbInfo } from './db.js';
 import authRoutes from './routes/auth.js';
 import agentRoutes from './routes/agents.js';
 import documentRoutes from './routes/documents.js';
@@ -14,8 +15,8 @@ import notificationRoutes from './routes/notifications.js';
 import archiveRoutes from './routes/archive.js';
 import adminRoutes from './routes/admin.js';
 import referencesRoutes from './routes/references.js';
+import airportsRoutes from './routes/airports.js';
 import { errorHandler } from './middleware/errorHandler.js';
-import { startNotificationScheduler } from './services/notifications.js';
 
 // Charger les variables d'environnement depuis le .env racine
 const __filename = fileURLToPath(import.meta.url);
@@ -23,10 +24,8 @@ const __dirname = path.dirname(__filename);
 const envPath = path.resolve(__dirname, '../../.env');
 dotenv.config({ path: envPath });
 
-export const prisma = new PrismaClient();
-
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3501;
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(process.cwd(), 'uploads');
@@ -37,7 +36,7 @@ if (!fs.existsSync(uploadsDir)) {
 // CORS configuration
 const corsOrigins = process.env.CORS_ORIGINS 
   ? process.env.CORS_ORIGINS.split(',') 
-  : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:8080'];
+  : ['http://localhost:3502', 'http://127.0.0.1:3502'];
 
 app.use(cors({
   origin: corsOrigins,
@@ -49,8 +48,15 @@ app.use(express.json());
 app.use('/uploads', express.static(uploadsDir));
 
 // Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), uploads: uploadsDir });
+app.get('/api/health', (_req, res) => {
+  const dbInfo = getDbInfo();
+  res.json({
+    status: 'ok',
+    message: process.env.PING_MESSAGE || 'AEROCHECK API ready',
+    apiBaseUrl: process.env.API_BASE_URL || `http://localhost:${PORT}`,
+    database: dbInfo,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // Routes
@@ -63,6 +69,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/archive', archiveRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/references', referencesRoutes);
+app.use('/api/airports', airportsRoutes);
 
 // Error handler
 app.use(errorHandler);
@@ -74,14 +81,12 @@ if (!isVercelDeployment) {
   app.listen(PORT, () => {
     console.log(`[AEROCHECK] Backend running on port ${PORT}`);
     console.log(`[AEROCHECK] CORS origins: ${corsOrigins.join(', ')}`);
-    
-    // Démarrer le planificateur de notifications
-    startNotificationScheduler();
+    console.log(`[AEROCHECK] Database: ${getDbInfo().filePath}`);
   });
 
   // Graceful shutdown
   process.on('SIGTERM', async () => {
-    await prisma.$disconnect();
+    console.log('[AEROCHECK] Arrêt gracieux...');
     process.exit(0);
   });
 }

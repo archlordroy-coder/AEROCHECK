@@ -26,6 +26,8 @@ import { AGENT_STATUS_LABELS, DOC_STATUS_LABELS, DOCUMENT_TYPE_LABELS, LICENSE_S
 import type { Agent, Document, License } from '@shared/types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { getRequiredLicenseDocumentTypes, filterPriorityDocuments, requiresJustificatif } from '@/lib/priority-documents';
+import { getLicenseValiditySnapshot } from '@/lib/license-validity';
 
 export default function AgentDashboard() {
   const { user } = useAuth();
@@ -76,16 +78,12 @@ export default function AgentDashboard() {
     }
   };
 
-  const requiredDocs = [
-    'PIECE_IDENTITE',
-    'PHOTO_IDENTITE',
-    'CASIER_JUDICIAIRE',
-    'CERTIFICAT_MEDICAL',
-    'ATTESTATION_FORMATION',
-    'CONTRAT_TRAVAIL'
-  ];
+  const requiredDocs = getRequiredLicenseDocumentTypes(agent);
+  const priorityDocuments = filterPriorityDocuments(documents);
+  const relevantDocuments = documents.filter((document) => requiredDocs.includes(document.type));
+  const licenseValidity = getLicenseValiditySnapshot(agent ? { ...agent, documents } : null);
 
-  const submittedTypes = documents.map(d => d.type);
+  const submittedTypes = relevantDocuments.map((d) => d.type);
   const progress = (submittedTypes.length / requiredDocs.length) * 100;
 
   if (isLoading) {
@@ -168,8 +166,8 @@ export default function AgentDashboard() {
                     <span className={agent ? '' : 'text-muted-foreground'}>Profil créé</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className={`h-2 w-2 rounded-full ${documents.length >= 6 ? 'bg-green-500' : documents.length > 0 ? 'bg-yellow-500' : 'bg-gray-300'}`} />
-                    <span className={documents.length > 0 ? '' : 'text-muted-foreground'}>Documents</span>
+                    <div className={`h-2 w-2 rounded-full ${relevantDocuments.length >= requiredDocs.length ? 'bg-green-500' : relevantDocuments.length > 0 ? 'bg-yellow-500' : 'bg-gray-300'}`} />
+                    <span className={relevantDocuments.length > 0 ? '' : 'text-muted-foreground'}>Documents</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className={`h-2 w-2 rounded-full ${agent.status === 'QIP_VALIDE' ? 'bg-green-500' : agent.status === 'QIP_REJETE' ? 'bg-red-500' : 'bg-gray-300'}`} />
@@ -189,10 +187,10 @@ export default function AgentDashboard() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatusCard
               title="Mes Documents"
-              value={`${documents.length}/6`}
-              color={documents.length === 6 ? 'green' : documents.length > 3 ? 'orange' : 'red'}
+              value={`${relevantDocuments.length}/${requiredDocs.length}`}
+              color={relevantDocuments.length === requiredDocs.length ? 'green' : relevantDocuments.length > 0 ? 'orange' : 'red'}
               icon={FileText}
-              trend={{ value: Math.round((documents.filter(d => d.status === 'VALIDE').length / Math.max(documents.length, 1)) * 100), label: 'validés' }}
+              trend={{ value: Math.round((relevantDocuments.filter((d) => d.status === 'VALIDE').length / Math.max(relevantDocuments.length, 1)) * 100), label: 'validés' }}
             />
 
             <StatusCard
@@ -211,7 +209,7 @@ export default function AgentDashboard() {
 
             <StatusCard
               title="Prochaine Étape"
-              value={documents.length < 6 
+              value={relevantDocuments.length < requiredDocs.length 
                 ? 'Documents' 
                 : agent.status === 'QIP_VALIDE'
                 ? 'Attente DLAA'
@@ -229,11 +227,14 @@ export default function AgentDashboard() {
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="h-5 w-5" />
-                  Mes Documents
+                  Mes Documents Prioritaires
                 </CardTitle>
-                <CardDescription>Documents requis pour ma licence</CardDescription>
+                <CardDescription>
+                  Certificat medical, controle de competence, niveau d&apos;anglais
+                  {requiresJustificatif(agent) ? ' et justificatif de nomination' : ''}
+                </CardDescription>
               </div>
-              {documents.length < 6 && (
+              {relevantDocuments.length < requiredDocs.length && (
                 <Button asChild size="sm">
                   <Link to="/app/documents/submit">
                     <Upload className="mr-2 h-4 w-4" />
@@ -308,13 +309,15 @@ export default function AgentDashboard() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Expire le</p>
+                    <p className="text-xs text-muted-foreground">Prochaine echeance</p>
                     <p className={`font-medium ${
-                      new Date(license.dateExpiration) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+                      licenseValidity.isExpired || licenseValidity.isExpiringSoon
                         ? 'text-red-600'
                         : ''
                     }`}>
-                      {format(new Date(license.dateExpiration), 'dd MMMM yyyy', { locale: fr })}
+                      {licenseValidity.nextExpiry
+                        ? format(licenseValidity.nextExpiry, 'dd MMMM yyyy', { locale: fr })
+                        : 'Selon les documents valides'}
                     </p>
                   </div>
                 </div>

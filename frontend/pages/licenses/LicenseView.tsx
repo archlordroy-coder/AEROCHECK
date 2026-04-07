@@ -18,8 +18,9 @@ import {
 } from 'lucide-react';
 import { LICENSE_STATUS_LABELS } from '@shared/types';
 import type { Agent, License } from '@shared/types';
-import { format, differenceInDays } from 'date-fns';
+import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { getLicenseValiditySnapshot } from '@/lib/license-validity';
 
 export default function LicenseView() {
   const { user } = useAuth();
@@ -100,9 +101,10 @@ export default function LicenseView() {
     );
   }
 
-  const daysUntilExpiry = differenceInDays(new Date(license.dateExpiration), new Date());
-  const isExpired = daysUntilExpiry < 0;
-  const isExpiringSoon = daysUntilExpiry >= 0 && daysUntilExpiry <= 30;
+  const validity = getLicenseValiditySnapshot(agent);
+  const daysUntilExpiry = validity.daysUntilNextExpiry;
+  const isExpired = validity.isExpired;
+  const isExpiringSoon = validity.isExpiringSoon;
 
   return (
     <div className="space-y-6">
@@ -121,7 +123,7 @@ export default function LicenseView() {
             <div>
               <p className="font-medium text-red-600">Licence expiree</p>
               <p className="text-sm text-muted-foreground">
-                Votre licence a expire. Contactez votre employeur pour le renouvellement.
+                Au moins un document requis n&apos;est plus valide. Contactez votre employeur pour regulariser votre dossier.
               </p>
             </div>
           </CardContent>
@@ -135,7 +137,7 @@ export default function LicenseView() {
             <div>
               <p className="font-medium text-yellow-600">Expiration proche</p>
               <p className="text-sm text-muted-foreground">
-                Votre licence expire dans {daysUntilExpiry} jours. Pensez au renouvellement.
+                Un document requis expire dans {daysUntilExpiry} jours. Pensez au renouvellement.
               </p>
             </div>
           </CardContent>
@@ -206,7 +208,12 @@ export default function LicenseView() {
                 </div>
                 <div className="text-right">
                   <p className="font-medium">
-                    {format(new Date(license.dateEmission), 'dd/MM/yyyy')} - {format(new Date(license.dateExpiration), 'dd/MM/yyyy')}
+                    Emette le {format(new Date(license.dateEmission), 'dd/MM/yyyy')}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {validity.nextExpiry
+                      ? `Prochaine echeance documentaire: ${format(validity.nextExpiry, 'dd/MM/yyyy')}`
+                      : 'Valide tant que les documents requis le restent'}
                   </p>
                 </div>
               </div>

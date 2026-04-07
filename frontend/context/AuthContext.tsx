@@ -5,6 +5,8 @@ import { authApi, setToken, removeToken } from '@/lib/api';
 
 interface UserWithAgent extends User {
   agent?: Agent;
+  pays?: string;
+  aeroport?: string;
 }
 
 interface AuthContextType {

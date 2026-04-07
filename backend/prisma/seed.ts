@@ -100,7 +100,7 @@ async function main() {
   }
   console.log(`✅ Seeded ${employeurs.length} employeurs`);
 
-  // Seed Pays ASECNA (18 membres : 17 pays africains + France)
+  // Seed Pays ASECNA (17 pays africains membres)
   const pays = [
     { code: 'BJ', nom: 'Benin', nomFr: 'Bénin' },
     { code: 'BF', nom: 'Burkina Faso', nomFr: 'Burkina Faso' },
@@ -109,7 +109,6 @@ async function main() {
     { code: 'KM', nom: 'Comoros', nomFr: 'Comores' },
     { code: 'CG', nom: 'Congo', nomFr: 'Congo' },
     { code: 'CI', nom: 'Ivory Coast', nomFr: "Côte d'Ivoire" },
-    { code: 'FR', nom: 'France', nomFr: 'France' },
     { code: 'GA', nom: 'Gabon', nomFr: 'Gabon' },
     { code: 'GN', nom: 'Guinea', nomFr: 'Guinée' },
     { code: 'GW', nom: 'Guinea-Bissau', nomFr: 'Guinée-Bissau' },
@@ -246,12 +245,6 @@ async function main() {
     { code: 'NDB', nom: 'Aéroport de Nouadhibou', ville: 'Nouadhibou', paysCode: 'MR' },
     { code: 'AJJ', nom: 'Aéroport d\'Atar', ville: 'Atar', paysCode: 'MR' },
     { code: 'KFA', nom: 'Aéroport de Kiffa', ville: 'Kiffa', paysCode: 'MR' },
-    
-    // France (pour ASECNA)
-    { code: 'CDG', nom: 'Aéroport de Paris-Charles de Gaulle', ville: 'Paris', paysCode: 'FR' },
-    { code: 'ORY', nom: 'Aéroport de Paris-Orly', ville: 'Paris', paysCode: 'FR' },
-    { code: 'RUN', nom: 'Aéroport de La Réunion Roland Garros', ville: 'Saint-Denis', paysCode: 'FR' },
-    { code: 'FDF', nom: 'Aéroport de Martinique Aimé Césaire', ville: 'Fort-de-France', paysCode: 'FR' },
   ];
 
   // Créer les aéroports avec les IDs de pays

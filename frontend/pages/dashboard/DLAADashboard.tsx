@@ -299,12 +299,13 @@ export default function DLAADashboard() {
                             {AGENT_STATUS_LABELS[agent.status as keyof typeof AGENT_STATUS_LABELS] || agent.status}
                           </Badge>
                         </div>
-                        <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Validation QIP complete</span>
-                        <span className="font-medium text-green-600">
-                          {agent.documentStats.validated}/{agent.documentStats.total} valides
-                        </span>
-                      </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Validation QIP complete</span>
+                            <span className="font-medium text-green-600">
+                              {agent.documentStats.validated}/{agent.documentStats.total} valides
+                            </span>
+                          </div>
                           <Progress value={progress} className="h-2" />
                         </div>
                       </div>

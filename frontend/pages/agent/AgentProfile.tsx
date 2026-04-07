@@ -13,13 +13,10 @@ import { User, MapPin, Briefcase, Plane, Calendar, Save, Loader2, Camera, FileTe
 import { AGENT_STATUS_LABELS, LICENSE_STATUS_LABELS, DOCUMENT_TYPE_LABELS } from '@shared/types';
 import type { Agent, Document as AgentDocument, License } from '@shared/types';
 
-const QUALIFICATIONS_OPTIONS = ['ADC', 'APP', 'ACC', 'APS'];
-
-const FONCTIONS = [
-  'Controleur Aerien',
-  'Instructeur',
-  'Superviseur'
-];
+const QUALIFICATIONS_OPTIONS = ['ADC', 'APP', 'APS', 'ACP', 'ACS', 'AEROPORT'];
+const GRADES = ['STAGIAIRE', 'CADET', 'JUNIOR', 'SENIOR'] as const;
+const POSTES_ADMIN = ['AUCUN', 'CHEF_UNITE_ENF', 'ENA', 'QIP', 'CHARGE_EN_ROUTE', 'CHARGE_EXPLOITATION_NA'] as const;
+const LICENSE_STATUSES = ['VALIDE', 'EXPIREE', 'SUSPENDUE'] as const;
 
 interface Nationalite {
   id: string;
@@ -65,12 +62,16 @@ export default function AgentProfile() {
     dateNaissance: '',
     nationaliteId: '',
     adresse: '',
-    fonction: '',
+    fonction: 'Controlleur de la circulation aerienne',
+    grade: '' as '' | (typeof GRADES)[number],
+    instructeur: false,
+    posteAdministratif: 'AUCUN' as (typeof POSTES_ADMIN)[number],
     employeurId: '',
     paysId: '',
     aeroportId: '',
     sexe: '',
     qualifications: [] as string[],
+    licenseStatus: 'VALIDE' as (typeof LICENSE_STATUSES)[number],
     whatsapp: ''
   });
 
@@ -107,11 +108,15 @@ export default function AgentProfile() {
             nationaliteId: agentData.nationaliteId || '',
             adresse: agentData.adresse,
             fonction: agentData.fonction,
+            grade: (agentData.grade as '' | (typeof GRADES)[number]) || '',
+            instructeur: Boolean(agentData.instructeur),
+            posteAdministratif: (agentData.posteAdministratif as (typeof POSTES_ADMIN)[number]) || 'AUCUN',
             employeurId: agentData.employeurId || '',
             paysId: agentData.paysId || '',
             aeroportId: agentData.aeroportId || '',
             sexe: agentData.sexe || '',
             qualifications: agentData.qualifications || [],
+            licenseStatus: (agentData.licenseStatus as (typeof LICENSE_STATUSES)[number]) || 'VALIDE',
             whatsapp: agentData.whatsapp || ''
           });
           
@@ -140,7 +145,7 @@ export default function AgentProfile() {
     fetchData();
   }, []);
 
-  const handleChange = (field: string, value: string) => {
+  const handleChange = (field: string, value: string | boolean) => {
     setFormData(prev => {
       const newData = { ...prev, [field]: value };
       
@@ -189,6 +194,7 @@ export default function AgentProfile() {
       const formData = new FormData();
       formData.append('file', photoFile);
       formData.append('type', 'PHOTO_IDENTITE');
+      formData.append('issuedAt', new Date().toISOString().slice(0, 10));
       await documentsApi.upload(agent.id, formData);
       toast.success('Photo téléchargée avec succès');
       
@@ -200,7 +206,7 @@ export default function AgentProfile() {
       setPhotoPreview(null);
       
       // Refresh agent data to get updated photoUrl
-      const agentRes = await agentsApi.getById(agent.id);
+      const agentRes = await agentsApi.get(agent.id);
       setAgent(agentRes.data);
       // Refresh documents
       const docsRes = await documentsApi.list({ agentId: agent.id });
@@ -216,7 +222,11 @@ export default function AgentProfile() {
 
     try {
       if (agent) {
-        await agentsApi.update(agent.id, formData);
+        const payload = {
+          ...formData,
+          grade: formData.grade || undefined
+        };
+        await agentsApi.update(agent.id, payload);
         toast.success('Profil mis a jour avec succes');
       } else {
         // Generate matricule for new agent
@@ -224,13 +234,15 @@ export default function AgentProfile() {
         const random = Math.floor(Math.random() * 100000).toString().padStart(5, '0');
         const matricule = `AG${year}${random}`;
         
-        await agentsApi.create({ 
-          ...formData, 
+        const payload = {
+          ...formData,
+          grade: formData.grade || undefined,
           matricule,
           lieuNaissance: 'Non specifie',
           zoneAcces: [],
           emailVerified: false
-        });
+        };
+        await agentsApi.create(payload);
         toast.success('Profil cree avec succes');
         await refreshUser();
         navigate('/app/dashboard');
@@ -591,17 +603,46 @@ export default function AgentProfile() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="fonction">Fonction</Label>
-                <Select 
-                  value={formData.fonction}
-                  onValueChange={(value) => handleChange('fonction', value)}
-                >
+                <Input id="fonction" value="Controlleur de la circulation aerienne" disabled />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="grade">Grade</Label>
+                <Select value={formData.grade} onValueChange={(value) => handleChange('grade', value)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selectionnez une fonction" />
+                    <SelectValue placeholder="Selectionnez un grade" />
                   </SelectTrigger>
                   <SelectContent>
-                    {FONCTIONS.map(f => (
-                      <SelectItem key={f} value={f}>{f}</SelectItem>
+                    {GRADES.map((grade) => (
+                      <SelectItem key={grade} value={grade}>{grade.toLowerCase()}</SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="instructeur">Instructeur</Label>
+                <Select value={formData.instructeur ? 'OUI' : 'NON'} onValueChange={(value) => handleChange('instructeur', value === 'OUI')}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NON">Non</SelectItem>
+                    <SelectItem value="OUI">Oui</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="posteAdministratif">Poste administratif</Label>
+                <Select value={formData.posteAdministratif} onValueChange={(value) => handleChange('posteAdministratif', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selectionnez un poste" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AUCUN">NULL</SelectItem>
+                    <SelectItem value="CHEF_UNITE_ENF">Chef unite ENF</SelectItem>
+                    <SelectItem value="ENA">ENA</SelectItem>
+                    <SelectItem value="QIP">QIP</SelectItem>
+                    <SelectItem value="CHARGE_EN_ROUTE">Charge en route</SelectItem>
+                    <SelectItem value="CHARGE_EXPLOITATION_NA">Charge d&apos;exploitation NA</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -681,6 +722,24 @@ export default function AgentProfile() {
                   ))}
                 </div>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="licenseStatus">Etat de la licence</Label>
+                <Select value={formData.licenseStatus} onValueChange={(value) => handleChange('licenseStatus', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selectionnez l'etat" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="VALIDE">Valide</SelectItem>
+                    <SelectItem value="EXPIREE">Expiree</SelectItem>
+                    <SelectItem value="SUSPENDUE">Suspendue</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {(formData.instructeur || formData.posteAdministratif !== 'AUCUN') && (
+                <p className="text-xs text-amber-600">
+                  Si vous etes instructeur ou occupez un poste administratif, ajoutez un justificatif de nomination dans les documents.
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>

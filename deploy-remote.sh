@@ -4,15 +4,17 @@
 # Usage: ./deploy-remote.sh
 # Inspiré du script TAKYMED avec améliorations pour AEROCHECK
 
-set -e
+set -euo pipefail
 
 # ============================================
 # CONFIGURATION - Charge depuis .env
 # ============================================
 
 if [ -f .env ]; then
-    # Charger les variables .env sans fuites vers xargs
-    export $(grep -v '^#' .env | grep -E '^(SERVER|PORT|DEST|DOMAIN|PM2|PASS)=' | sed 's/\r$//' | xargs)
+    # shellcheck disable=SC1091
+    set -a
+    . ./.env
+    set +a
 fi
 
 REMOTE_USER=${SERVER_USER:-"root"}
@@ -20,7 +22,7 @@ REMOTE_HOST=${SERVER_IP:-"82.165.150.150"}
 REMOTE_DIR=${DEST_DIR:-"/var/www/AEROCHECK"}
 DOMAIN=${DOMAIN:-$REMOTE_HOST}
 SOURCE_DIR="$(pwd)"
-PORT=${PORT:-3500}
+APP_PORT=${PORT:-${API_PORT:-3500}}
 PM2_NAME=${PM2_NAME:-"aerocheck-backend"}
 SERVER_PASS=${SERVER_PASS:-""}
 
@@ -47,7 +49,7 @@ fi
 
 echo "🚀 Démarrage du déploiement AEROCHECK"
 echo "   Serveur: $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR"
-echo "   Port: $PORT"
+echo "   Port applicatif: $APP_PORT"
 echo "   Domaine: $DOMAIN"
 echo ""
 
@@ -80,7 +82,7 @@ $SSH_CMD $REMOTE_USER@$REMOTE_HOST "
     # Sauvegarder le .env s'il existe
     if [ -f $REMOTE_DIR/.env ]; then
         echo '   💾 Sauvegarde du .env existant...'
-        cp $REMOTE_DIR/.env /tmp/aerocheck-env-backup
+        cp $REMOTE_DIR/.env /tmp/aerocheck-env-backup-\$(date +%Y%m%d-%H%M%S)
     fi
     
     # Sauvegarder la base de données SQLite si elle existe
@@ -94,11 +96,6 @@ $SSH_CMD $REMOTE_USER@$REMOTE_HOST "
     mkdir -p $REMOTE_DIR/backend/uploads
     mkdir -p /var/log/pm2
     
-    # Restaurer le .env
-    if [ -f /tmp/aerocheck-env-backup ]; then
-        mv /tmp/aerocheck-env-backup $REMOTE_DIR/.env
-        echo '   ✅ .env restauré'
-    fi
 " || { echo "❌ Échec de la préparation du répertoire distant"; exit 1; }
 
 # ============================================
@@ -120,6 +117,17 @@ rsync -avz -e "$RSYNC_SSH" --progress "$SOURCE_DIR/" "$REMOTE_USER@$REMOTE_HOST:
     --exclude 'test-port-*.sh' \
     --exclude 'deploy-remote.sh' || { echo "❌ Échec de la synchronisation"; exit 1; }
 
+# Synchroniser explicitement le .env local si disponible
+if [ -f .env ]; then
+    echo "🔐 Synchronisation du .env local vers le serveur..."
+    rsync -az -e "$RSYNC_SSH" .env "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/.env" || {
+        echo "❌ Impossible de copier le fichier .env sur le serveur"
+        exit 1
+    }
+else
+    echo "⚠️  Aucun .env local trouvé, conservation du .env distant existant"
+fi
+
 # ============================================
 # 4. VÉRIFICATION DU .ENV
 # ============================================
@@ -128,8 +136,8 @@ echo "🔍 Vérification du fichier .env sur le serveur..."
 $SSH_CMD $REMOTE_USER@$REMOTE_HOST "
     if [ -f $REMOTE_DIR/.env ]; then
         echo '   ✅ Fichier .env présent'
-        echo '   Variables configurées:'
-        grep -E '^(PORT|DATABASE_URL|CORS_ORIGINS|JWT_SECRET)=' $REMOTE_DIR/.env | sed 's/^/      /' || true
+        echo '   Variables détectées (.env):'
+        grep -E '^(PORT|API_PORT|DATABASE_URL|CORS_ORIGINS|JWT_SECRET)=' $REMOTE_DIR/.env | cut -d= -f1 | sed 's/^/      /' || true
     else
         echo '   ⚠️  Fichier .env manquant! Création d'un fichier par défaut...'
         cat > $REMOTE_DIR/.env << 'EOF'
@@ -174,10 +182,9 @@ $SSH_CMD $REMOTE_USER@$REMOTE_HOST "
     echo '   🔨 npm run build...'
     npm run build
     
-    # Prisma - Génération et migrations
-    echo '   🗄️  Prisma generate & migrate...'
-    npx prisma generate
-    npx prisma migrate deploy || echo '   ⚠️  Migration skipped or already up to date'
+    # Initialisation de la base SQLite (sans Prisma)
+    echo '   🗄️  Initialisation SQLite...'
+    npm run db:init
 " || { echo "❌ Échec du build sur le serveur"; exit 1; }
 
 # ============================================
@@ -200,14 +207,16 @@ $SSH_CMD $REMOTE_USER@$REMOTE_HOST "
     cd $REMOTE_DIR
     
     # Charger les variables d'environnement
-    export \$(grep -v '^#' .env | xargs)
+    set -a
+    . ./.env
+    set +a
     
     # Arrêter l'ancienne instance si elle existe
     pm2 delete $PM2_NAME 2>/dev/null || true
     
     # Démarrer la nouvelle instance
-    pm2 start ecosystem.config.js --env production || \
-    pm2 start ./backend/dist/index.js --name $PM2_NAME -- --port \$PORT
+    pm2 start ecosystem.config.js --env production --update-env || \
+    pm2 start ./backend/dist/index.js --name $PM2_NAME --update-env -- --port $APP_PORT
     
     # Sauvegarder la configuration
     pm2 save
@@ -229,16 +238,16 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
     echo "   Tentative $((RETRY_COUNT + 1))/$MAX_RETRIES..."
     sleep 3
     
-    RESPONSE=\$($SSH_CMD $REMOTE_USER@$REMOTE_HOST "curl -s http://localhost:$PORT/api/health 2>/dev/null || echo ''")
+    RESPONSE=$($SSH_CMD $REMOTE_USER@$REMOTE_HOST "curl -s http://localhost:$APP_PORT/api/health 2>/dev/null || echo ''")
     
-    if [[ "\$RESPONSE" == *"ok"* ]] || [[ "\$RESPONSE" == *"status"* ]]; then
+    if [[ "$RESPONSE" == *"ok"* ]] || [[ "$RESPONSE" == *"status"* ]]; then
         echo "   ✅ Application en ligne!"
-        echo "   Réponse: \$RESPONSE"
+        echo "   Réponse: $RESPONSE"
         HEALTH_PASSED=true
         break
     fi
     
-    RETRY_COUNT=\$((RETRY_COUNT + 1))
+    RETRY_COUNT=$((RETRY_COUNT + 1))
 done
 
 if [ "$HEALTH_PASSED" = false ]; then
@@ -258,8 +267,8 @@ echo "✅ DÉPLOIEMENT TERMINÉ AVEC SUCCÈS"
 echo "=========================================="
 echo ""
 echo "📍 Informations d'accès:"
-echo "   Health Check: http://$REMOTE_HOST:$PORT/api/health"
-echo "   API:          http://$REMOTE_HOST:$PORT/api"
+echo "   Health Check: http://$REMOTE_HOST:$APP_PORT/api/health"
+echo "   API:          http://$REMOTE_HOST:$APP_PORT/api"
 echo "   Frontend:     http://$DOMAIN (si configuré)"
 echo ""
 echo "🔧 Commandes PM2 utiles:"

@@ -7,6 +7,7 @@ module.exports = {
       name: 'aerocheck-backend',
       script: './backend/dist/index.js',
       cwd: '/var/www/AEROCHECK',  // Chemin absolu vers le projet sur le serveur
+      env_file: '/var/www/AEROCHECK/.env',
       instances: 1,  // Nombre d'instances (1 pour démarrer, ou 'max' pour utiliser tous les cœurs)
       exec_mode: 'fork',  // 'fork' pour single instance, 'cluster' pour multi-core
       

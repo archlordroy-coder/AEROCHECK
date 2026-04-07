@@ -13,6 +13,9 @@ const createAgentSchema = z.object({
   nationaliteId: z.string(),
   adresse: z.string().min(5),
   fonction: z.string().min(2),
+  grade: z.enum(['STAGIAIRE', 'CADET', 'JUNIOR', 'SENIOR']).optional(),
+  instructeur: z.boolean().default(false),
+  posteAdministratif: z.enum(['CHEF_UNITE_ENF', 'ENA', 'QIP', 'CHARGE_EN_ROUTE', 'CHARGE_EXPLOITATION_NA', 'AUCUN']).optional(),
   employeurId: z.string(),
   paysId: z.string(),
   aeroportId: z.string(),
@@ -32,6 +35,10 @@ const updateAgentSchema = z.object({
   zoneAcces: z.array(z.string()).default([]).optional(),
   sexe: z.enum(['M', 'F']).optional(),
   qualifications: z.array(z.string()).optional(),
+  grade: z.enum(['STAGIAIRE', 'CADET', 'JUNIOR', 'SENIOR']).optional(),
+  instructeur: z.boolean().optional(),
+  posteAdministratif: z.enum(['CHEF_UNITE_ENF', 'ENA', 'QIP', 'CHARGE_EN_ROUTE', 'CHARGE_EXPLOITATION_NA', 'AUCUN']).optional(),
+  licenseStatus: z.enum(['VALIDE', 'EXPIREE', 'SUSPENDUE']).optional(),
   whatsapp: z.string().optional(),
   photoUrl: z.string().optional()
 });
@@ -279,6 +286,9 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
         nationaliteId: data.nationaliteId,
         adresse: data.adresse,
         fonction: data.fonction,
+        grade: data.grade,
+        instructeur: data.instructeur ?? false,
+        posteAdministratif: data.posteAdministratif ?? 'AUCUN',
         employeurId: data.employeurId,
         paysId: data.paysId,
         aeroportId: data.aeroportId,
@@ -339,12 +349,16 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next) =
     if (data.nationaliteId) updateData.nationaliteId = data.nationaliteId;
     if (data.adresse) updateData.adresse = data.adresse;
     if (data.fonction) updateData.fonction = data.fonction;
+    if (data.grade) updateData.grade = data.grade;
+    if (typeof data.instructeur === 'boolean') updateData.instructeur = data.instructeur;
+    if (data.posteAdministratif) updateData.posteAdministratif = data.posteAdministratif;
     if (data.employeurId) updateData.employeurId = data.employeurId;
     if (data.paysId) updateData.paysId = data.paysId;
     if (data.aeroportId) updateData.aeroportId = data.aeroportId;
     if (data.zoneAcces) updateData.zoneAcces = JSON.stringify(data.zoneAcces);
     if (data.sexe) updateData.sexe = data.sexe;
     if (data.qualifications) updateData.qualifications = JSON.stringify(data.qualifications);
+    if (data.licenseStatus) updateData.licenseStatus = data.licenseStatus;
     if (data.whatsapp) updateData.whatsapp = data.whatsapp;
     if (data.photoUrl) updateData.photoUrl = data.photoUrl;
 

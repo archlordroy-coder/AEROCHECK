@@ -53,13 +53,14 @@ const upload = multer({
 const createDocumentSchema = z.object({
   agentId: z.string(),
   type: z.enum([
-    'PIECE_IDENTITE',
-    'PHOTO_IDENTITE',
-    'CASIER_JUDICIAIRE',
     'CERTIFICAT_MEDICAL',
-    'ATTESTATION_FORMATION',
-    'CONTRAT_TRAVAIL'
-  ])
+    'CONTROLE_COMPETENCE',
+    'NIVEAU_ANGLAIS',
+    'JUSTIFICATIF_NOMINATION',
+    'PHOTO_IDENTITE'
+  ]),
+  issuedAt: z.coerce.date(),
+  englishLevel: z.coerce.number().int().min(4).max(6).optional()
 });
 
 const validateDocumentSchema = z.object({
@@ -213,6 +214,27 @@ router.post('/', authenticate, upload.single('file'), async (req: AuthRequest, r
       throw new AppError('Acces refuse', 403);
     }
 
+    if (data.type === 'NIVEAU_ANGLAIS' && !data.englishLevel) {
+      throw new AppError('Le niveau d\'anglais (4, 5 ou 6) est obligatoire pour ce document', 400);
+    }
+
+    if (data.type !== 'NIVEAU_ANGLAIS' && data.englishLevel) {
+      throw new AppError('Le niveau d\'anglais ne s\'applique qu\'au document NIVEAU_ANGLAIS', 400);
+    }
+
+    if ((agent.instructeur || (agent.posteAdministratif && agent.posteAdministratif !== 'AUCUN')) && data.type !== 'JUSTIFICATIF_NOMINATION') {
+      const justificatif = await prisma.document.findFirst({
+        where: {
+          agentId: data.agentId,
+          type: 'JUSTIFICATIF_NOMINATION',
+          status: { in: ['EN_ATTENTE', 'VALIDE'] }
+        }
+      });
+      if (!justificatif) {
+        throw new AppError('Un justificatif de nomination est obligatoire pour un instructeur ou un poste administratif', 400);
+      }
+    }
+
     // Check if document type already submitted (allow re-submission of REJETE documents)
     // For PHOTO_IDENTITE, we allow replacement by deleting the old one
     const existing = await prisma.document.findFirst({
@@ -290,6 +312,34 @@ router.post('/', authenticate, upload.single('file'), async (req: AuthRequest, r
       relativePath = `/uploads/documents/${data.agentId}/${fileName}`;
     }
 
+    // Date de validite selon type de document
+    let expiresAt: Date | null = null;
+    if (data.type === 'CERTIFICAT_MEDICAL') {
+      const birthDate = new Date(agent.dateNaissance);
+      const ageAtIssue = data.issuedAt.getFullYear() - birthDate.getFullYear() - (
+        data.issuedAt.getMonth() < birthDate.getMonth() ||
+        (data.issuedAt.getMonth() === birthDate.getMonth() && data.issuedAt.getDate() < birthDate.getDate())
+          ? 1
+          : 0
+      );
+      const yearsToAdd = ageAtIssue < 40 ? 2 : 1;
+      expiresAt = new Date(data.issuedAt);
+      expiresAt.setFullYear(expiresAt.getFullYear() + yearsToAdd);
+    } else if (data.type === 'CONTROLE_COMPETENCE') {
+      expiresAt = new Date(data.issuedAt);
+      expiresAt.setFullYear(expiresAt.getFullYear() + 2);
+    } else if (data.type === 'NIVEAU_ANGLAIS') {
+      if (data.englishLevel === 4) {
+        expiresAt = new Date(data.issuedAt);
+        expiresAt.setFullYear(expiresAt.getFullYear() + 3);
+      } else if (data.englishLevel === 5) {
+        expiresAt = new Date(data.issuedAt);
+        expiresAt.setFullYear(expiresAt.getFullYear() + 6);
+      } else {
+        expiresAt = null; // 6/6 : a vie
+      }
+    }
+
     // Create document with actual file path
     const document = await prisma.document.create({
       data: {
@@ -297,7 +347,10 @@ router.post('/', authenticate, upload.single('file'), async (req: AuthRequest, r
         type: data.type,
         fileName: fileName,
         filePath: relativePath,
-        status: 'EN_ATTENTE'
+        status: 'EN_ATTENTE',
+        issuedAt: data.issuedAt,
+        expiresAt,
+        englishLevel: data.type === 'NIVEAU_ANGLAIS' ? data.englishLevel : null
       },
       include: {
         agent: {
@@ -311,11 +364,7 @@ router.post('/', authenticate, upload.single('file'), async (req: AuthRequest, r
     });
 
     // Update agent status if needed
-    const docCount = await prisma.document.count({
-      where: { agentId: data.agentId }
-    });
-
-    if (docCount >= 1 && agent.status === 'EN_ATTENTE') {
+    if (agent.status === 'EN_ATTENTE') {
       await prisma.agent.update({
         where: { id: data.agentId },
         data: { status: 'DOCUMENTS_SOUMIS' }
@@ -388,22 +437,8 @@ router.put(
         }
       });
 
-      // Mettre à jour le statut du document avec date d'expiration si validé
+      // Mettre à jour le statut du document
       const newStatus = data.status; // VALIDE ou REJETE
-      
-      // Calculer la date d'expiration si le document est validé
-      let expiresAt = null;
-      if (data.status === 'VALIDE') {
-        const docTypeConfig = await prisma.documentTypeConfig.findUnique({
-          where: { type: document.type }
-        });
-        
-        if (docTypeConfig) {
-          const validityDays = docTypeConfig.validityDuration;
-          expiresAt = new Date();
-          expiresAt.setDate(expiresAt.getDate() + validityDays);
-        }
-      }
       
       // Si DLAA rejette, revenir à REJETE pour re-soumission
       const finalStatus = (niveau === 'DLAA' && data.status === 'REJETE') ? 'REJETE' : newStatus;
@@ -411,8 +446,7 @@ router.put(
       const updatedDocument = await prisma.document.update({
         where: { id: req.params.id as string },
         data: { 
-          status: finalStatus,
-          expiresAt: expiresAt
+          status: finalStatus
         },
         include: {
           agent: true,

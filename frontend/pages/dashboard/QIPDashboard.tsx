@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
 import { DocumentPreview } from '@/components/ui/document-preview';
+import { useAuth } from '@/context/AuthContext';
 import { 
   FileSearch, 
   Clock, 
@@ -30,7 +31,9 @@ import {
   Filter,
   MapPin,
   FileText,
-  Award
+  Award,
+  Shield,
+  User
 } from 'lucide-react';
 import { DOCUMENT_TYPE_LABELS, AGENT_STATUS_LABELS, DOC_STATUS_LABELS } from '@shared/types';
 import type { Document, Agent } from '@shared/types';
@@ -53,6 +56,7 @@ interface Aeroport {
 }
 
 export default function QIPDashboard() {
+  const { user } = useAuth();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [allDocuments, setAllDocuments] = useState<Document[]>([]);
   const [agents, setAgents] = useState<Array<{
@@ -62,6 +66,7 @@ export default function QIPDashboard() {
     lastName: string;
     email: string;
     aeroport: string;
+    pays: string;
     status: string;
     documentStats: {
       total: number;
@@ -135,20 +140,30 @@ export default function QIPDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          Verification QIP
-        </h1>
-        <p className="text-muted-foreground">
-          Verifiez et validez les documents des agents aeroportuaires
-        </p>
+      {/* Header QIP Spécifique */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <Shield className="h-6 w-6 text-primary" />
+            Espace QIP - Verification
+          </h1>
+          <p className="text-muted-foreground">
+            Verification premiere niveau des documents agents
+          </p>
+        </div>
+        {user?.pays && (
+          <Badge variant="outline" className="flex items-center gap-1">
+            <MapPin className="h-3 w-3" />
+            {user.pays}
+          </Badge>
+        )}
       </div>
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">En attente</CardTitle>
+            <CardTitle className="text-sm font-medium">En attente QIP</CardTitle>
             <Clock className="h-4 w-4 text-yellow-600" />
           </CardHeader>
           <CardContent>
@@ -156,52 +171,52 @@ export default function QIPDashboard() {
               {stats?.documentsEnAttente || documents.length}
             </div>
             <p className="text-xs text-muted-foreground">
-              Documents a verifier
+              Documents a verifier par QIP
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total traites</CardTitle>
-            <FileSearch className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Valides QIP</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {stats?.totalDocuments || 0}
+            <div className="text-2xl font-bold text-green-600">
+              {stats?.documentsValides || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              Documents au total
+              Documents valides niveau QIP
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Agents concernes</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Rejetes QIP</CardTitle>
+            <XCircle className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {new Set(documents.map(d => d.agentId)).size}
+            <div className="text-2xl font-bold text-red-600">
+              {stats?.documentsRejetes || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              Dossiers en cours
+              Documents refuses niveau QIP
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Agents Card with Document Stats */}
+      {/* Agents QIP Card with Document Stats */}
       {agents.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CheckSquare className="h-5 w-5" />
-              Agents et Documents Validés
+              Agents sous ma responsabilite QIP
             </CardTitle>
             <CardDescription>
-              Liste des agents avec le nombre de documents validés
+              Liste des agents avec etat de leurs documents
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -218,7 +233,7 @@ export default function QIPDashboard() {
                           {agent.firstName} {agent.lastName}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {agent.matricule}
+                          {agent.matricule} • {agent.aeroport}
                         </p>
                       </div>
                       <Badge variant="outline" className="text-xs">
@@ -227,9 +242,9 @@ export default function QIPDashboard() {
                     </div>
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Documents</span>
+                        <span className="text-muted-foreground">Progression QIP</span>
                         <span className="font-medium">
-                          {agent.documentStats.validated}/{agent.documentStats.total} validés
+                          {agent.documentStats.validated}/{agent.documentStats.total} valides
                         </span>
                       </div>
                       <Progress value={progress} className="h-2" />
@@ -322,9 +337,12 @@ export default function QIPDashboard() {
         <TabsContent value="pending" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Documents en attente de verification</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-yellow-600" />
+                Documents en attente de verification QIP
+              </CardTitle>
               <CardDescription>
-                Cliquez sur un document pour le verifier
+                Cliquez sur un document pour examiner et valider/rejeter
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -384,10 +402,10 @@ export default function QIPDashboard() {
                               <Eye className="h-4 w-4 mr-1" />
                               Aperçu
                             </Button>
-                            <Button asChild size="sm">
+                            <Button asChild size="sm" className="bg-yellow-600 hover:bg-yellow-700">
                               <Link to={`/qip/verify/${doc.id}`}>
-                                Vérifier
-                                <ArrowRight className="ml-2 h-4 w-4" />
+                                <Shield className="mr-1 h-3 w-3" />
+                                Verifier QIP
                               </Link>
                             </Button>
                           </div>
@@ -404,9 +422,12 @@ export default function QIPDashboard() {
         <TabsContent value="validated" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Documents validés</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-green-700">
+                <CheckCircle className="h-5 w-5" />
+                Documents valides par QIP
+              </CardTitle>
               <CardDescription>
-                Documents deja verifies et approuves
+                Documents verifies et approuves niveau QIP - En attente de DLAA
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -424,9 +445,12 @@ export default function QIPDashboard() {
         <TabsContent value="rejected" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Documents rejetés</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-red-700">
+                <XCircle className="h-5 w-5" />
+                Documents rejetes par QIP
+              </CardTitle>
               <CardDescription>
-                Documents refuses avec motif
+                Documents refuses avec motif - Agent doit resoumettre
               </CardDescription>
             </CardHeader>
             <CardContent>

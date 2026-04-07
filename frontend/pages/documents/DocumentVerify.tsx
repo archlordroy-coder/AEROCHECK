@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
+import { useAuth } from '@/context/AuthContext';
 import { 
   ArrowLeft, 
   FileText, 
@@ -16,7 +17,10 @@ import {
   XCircle, 
   Clock,
   AlertTriangle,
-  Download
+  Download,
+  Shield,
+  Award,
+  Printer
 } from 'lucide-react';
 import { DOCUMENT_TYPE_LABELS, AGENT_STATUS_LABELS } from '@shared/types';
 import type { Document } from '@shared/types';
@@ -26,11 +30,16 @@ import { fr } from 'date-fns/locale';
 export default function DocumentVerify() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [document, setDocument] = useState<Document | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [comment, setComment] = useState('');
   const [action, setAction] = useState<'VALIDE' | 'REJETE' | null>(null);
+
+  const userRole = user?.role || 'QIP';
+  const isQIP = userRole === 'QIP' || userRole === 'SUPER_ADMIN';
+  const isDLAA = userRole === 'DLAA' || userRole === 'DNA';
 
   useEffect(() => {
     const fetchDocument = async () => {
@@ -57,7 +66,7 @@ export default function DocumentVerify() {
     if (!document) return;
     
     if (status === 'REJETE' && !comment.trim()) {
-      toast.error('Veuillez indiquer la raison du rejet');
+      toast.error(`Veuillez indiquer la raison du rejet ${isQIP ? 'QIP' : 'DLAA'}`);
       return;
     }
 
@@ -70,8 +79,11 @@ export default function DocumentVerify() {
         comment: comment.trim() || undefined
       });
       
-      toast.success(status === 'VALIDE' ? 'Document valide' : 'Document rejete');
-      navigate('/qip');
+      toast.success(status === 'VALIDE' 
+        ? `Document valide ${isQIP ? 'par QIP' : 'par DLAA'}` 
+        : `Document rejete ${isQIP ? 'par QIP' : 'par DLAA'}`
+      );
+      navigate(isQIP ? '/qip' : '/dlaa');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Erreur lors de la validation');
     } finally {
@@ -105,15 +117,27 @@ export default function DocumentVerify() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/qip')}>
+        <Button variant="ghost" size="icon" onClick={() => navigate(isQIP ? '/qip' : '/dlaa')}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Verification de document
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            {isQIP ? (
+              <>
+                <Shield className="h-6 w-6 text-yellow-600" />
+                Verification QIP
+              </>
+            ) : (
+              <>
+                <Award className="h-6 w-6 text-primary" />
+                Verification Finale DLAA
+              </>
+            )}
           </h1>
           <p className="text-muted-foreground">
-            Examinez et validez ce document
+            {isQIP 
+              ? 'Examinez et validez ce document (Premier niveau)' 
+              : 'Verification finale avant delivrance de licence'}
           </p>
         </div>
       </div>
@@ -177,9 +201,23 @@ export default function DocumentVerify() {
           {/* Validation form */}
           <Card>
             <CardHeader>
-              <CardTitle>Decision de verification</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                {isQIP ? (
+                  <>
+                    <Shield className="h-5 w-5 text-yellow-600" />
+                    Decision QIP
+                  </>
+                ) : (
+                  <>
+                    <Award className="h-5 w-5 text-primary" />
+                    Decision Finale DLAA
+                  </>
+                )}
+              </CardTitle>
               <CardDescription>
-                Validez ou rejetez ce document
+                {isQIP 
+                  ? 'Validez ou rejetez ce document au niveau QIP'
+                  : 'Validation finale avant emission de licence'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -198,14 +236,14 @@ export default function DocumentVerify() {
                 <Button
                   onClick={() => handleValidate('VALIDE')}
                   disabled={isSubmitting}
-                  className="flex-1 bg-green-600 hover:bg-green-700"
+                  className={`flex-1 ${isQIP ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-primary hover:bg-primary/90'}`}
                 >
                   {isSubmitting && action === 'VALIDE' ? (
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                   ) : (
                     <>
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      Valider
+                      {isQIP ? <Shield className="mr-2 h-4 w-4" /> : <Award className="mr-2 h-4 w-4" />}
+                      {isQIP ? 'Valider QIP' : 'Valider DLAA'}
                     </>
                   )}
                 </Button>
@@ -224,55 +262,6 @@ export default function DocumentVerify() {
                     </>
                   )}
                 </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Agent info */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Informations agent
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Nom complet</p>
-                <p className="font-medium">
-                  {document.agent?.user?.firstName} {document.agent?.user?.lastName}
-                </p>
-              </div>
-              
-              <Separator />
-              
-              <div>
-                <p className="text-sm text-muted-foreground">Matricule</p>
-                <p className="font-mono font-medium">{document.agent?.matricule}</p>
-              </div>
-              
-              <Separator />
-              
-              <div>
-                <p className="text-sm text-muted-foreground">Statut actuel</p>
-                <Badge className="mt-1">
-                  {AGENT_STATUS_LABELS[document.agent?.status as keyof typeof AGENT_STATUS_LABELS] || document.agent?.status}
-                </Badge>
-              </div>
-              
-              <Separator />
-              
-              <div>
-                <p className="text-sm text-muted-foreground">Email</p>
-                <p className="text-sm">{document.agent?.user?.email}</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Validation history */}
-          {document.validations && document.validations.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Historique</CardTitle>

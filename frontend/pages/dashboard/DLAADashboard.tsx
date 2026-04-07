@@ -17,6 +17,7 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
+import { useAuth } from '@/context/AuthContext';
 import { 
   Award, 
   CheckCircle, 
@@ -28,7 +29,10 @@ import {
   Filter,
   Clock,
   FileText,
-  XCircle
+  XCircle,
+  Shield,
+  MapPin,
+  Printer
 } from 'lucide-react';
 import { AGENT_STATUS_LABELS, LICENSE_STATUS_LABELS } from '@shared/types';
 import type { Agent, License } from '@shared/types';
@@ -51,6 +55,7 @@ interface Aeroport {
 }
 
 export default function DLAADashboard() {
+  const { user } = useAuth();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [agentsWithStats, setAgentsWithStats] = useState<Array<{
     id: string;
@@ -59,6 +64,7 @@ export default function DLAADashboard() {
     lastName: string;
     email: string;
     aeroport: string;
+    pays: string;
     status: string;
     documentStats: {
       total: number;
@@ -131,28 +137,38 @@ export default function DLAADashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          Emission DLAA
-        </h1>
-        <p className="text-muted-foreground">
-          Emettez les licences pour les agents valides QIP
-        </p>
+      {/* Header DLAA Specifique */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <Shield className="h-6 w-6 text-primary" />
+            Espace DLAA - Delivrance
+          </h1>
+          <p className="text-muted-foreground">
+            Delivrance finale des licences aux agents valides QIP
+          </p>
+        </div>
+        {user?.aeroport && (
+          <Badge variant="outline" className="flex items-center gap-1">
+            <MapPin className="h-3 w-3" />
+            {user.aeroport}
+          </Badge>
+        )}
       </div>
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">QIP Valides</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-600" />
+            <CardTitle className="text-sm font-medium">Attente DLAA</CardTitle>
+            <Clock className="h-4 w-4 text-yellow-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-2xl font-bold text-yellow-600">
               {stats?.qipValides || agents.length}
             </div>
             <p className="text-xs text-muted-foreground">
-              Prets pour emission
+              Agents QIP valides en attente
             </p>
           </CardContent>
         </Card>
@@ -160,40 +176,40 @@ export default function DLAADashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Licences Actives</CardTitle>
-            <CreditCard className="h-4 w-4 text-primary" />
+            <CreditCard className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-green-600">
               {stats?.licencesActives || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              Actuellement valides
+              Licences DLAA en cours de validite
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total emises</CardTitle>
-            <Award className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Total delivrees</CardTitle>
+            <Award className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {licenses.length}
             </div>
             <p className="text-xs text-muted-foreground">
-              Licences delivrees
+              Licences DLAA emises
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters */}
+      {/* Filters DLAA */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Filter className="h-4 w-4" />
-            Filtres par zone geographique
+            Filtres DLAA par zone geographique
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -241,27 +257,27 @@ export default function DLAADashboard() {
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="pending">
             <Clock className="h-4 w-4 mr-2" />
-            En attente d&apos;emission ({agents.length})
+            En attente emission ({agents.length})
           </TabsTrigger>
           <TabsTrigger value="issued">
             <Award className="h-4 w-4 mr-2" />
-            Licences emises ({licenses.length})
+            Licences delivrees ({licenses.length})
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="pending" className="mt-6 space-y-6">
-          {/* Agents Card with Document Stats */}
-          {agentsWithStats.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileCheck className="h-5 w-5" />
-                  Agents et Documents Validés
-                </CardTitle>
-                <CardDescription>
-                  Liste des agents avec le nombre de documents validés
-                </CardDescription>
-              </CardHeader>
+            {/* Agents QIP Validés Card */}
+            {agentsWithStats.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileCheck className="h-5 w-5" />
+                    Agents valides par QIP sous ma responsabilite
+                  </CardTitle>
+                  <CardDescription>
+                    Ces agents sont prets pour la delivrance DLAA
+                  </CardDescription>
+                </CardHeader>
               <CardContent>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {agentsWithStats.map((agent) => {
@@ -283,13 +299,12 @@ export default function DLAADashboard() {
                             {AGENT_STATUS_LABELS[agent.status as keyof typeof AGENT_STATUS_LABELS] || agent.status}
                           </Badge>
                         </div>
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Documents</span>
-                            <span className="font-medium">
-                              {agent.documentStats.validated}/{agent.documentStats.total} validés
-                            </span>
-                          </div>
+                        <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Validation QIP complete</span>
+                        <span className="font-medium text-green-600">
+                          {agent.documentStats.validated}/{agent.documentStats.total} valides
+                        </span>
+                      </div>
                           <Progress value={progress} className="h-2" />
                         </div>
                       </div>
@@ -300,14 +315,17 @@ export default function DLAADashboard() {
             </Card>
           )}
 
-          {/* Agents ready for license */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Agents prets pour emission de licence</CardTitle>
-              <CardDescription>
-                Ces agents ont passe la verification QIP
-              </CardDescription>
-            </CardHeader>
+            {/* Agents ready for DLAA license */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-yellow-600" />
+                  Agents prets pour delivrance DLAA
+                </CardTitle>
+                <CardDescription>
+                  Ces agents ont passe la verification QIP et sont prets pour la licence
+                </CardDescription>
+              </CardHeader>
             <CardContent>
               {agents.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -353,12 +371,12 @@ export default function DLAADashboard() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button asChild size="sm">
-                            <Link to={`/dlaa/issue/${agent.id}`}>
-                              Emettre licence
-                              <ArrowRight className="ml-2 h-4 w-4" />
-                            </Link>
-                          </Button>
+                          <Button asChild size="sm" className="bg-primary hover:bg-primary/90">
+                          <Link to={`/dlaa/issue/${agent.id}`}>
+                            <Printer className="mr-1 h-3 w-3" />
+                            Delivrer licence
+                          </Link>
+                        </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -372,9 +390,12 @@ export default function DLAADashboard() {
         <TabsContent value="issued" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Licences emises</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-green-700">
+                <Award className="h-5 w-5" />
+                Licences DLAA delivrees
+              </CardTitle>
               <CardDescription>
-                Historique des licences delivrees
+                Historique des licences delivrees par DLAA
               </CardDescription>
             </CardHeader>
             <CardContent>

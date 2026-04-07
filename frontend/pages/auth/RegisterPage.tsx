@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import appLogo from "@/logo/logosansfond.png";
-import { Lock, Mail, User, Phone, Calendar, MapPin, Briefcase, GraduationCap } from 'lucide-react';
+import { Lock, Mail, User, Phone, Calendar, MapPin, Briefcase, GraduationCap, Loader2 } from 'lucide-react';
+import { referencesApi } from '@/lib/api';
 
 const QUALIFICATIONS_OPTIONS = [
   'ADC',
@@ -20,6 +21,13 @@ const QUALIFICATIONS_OPTIONS = [
 export default function RegisterPage() {
   const { register } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Reference data from API
+  const [pays, setPays] = useState<Array<{id: string, nomFr: string}>>([]);
+  const [aeroports, setAeroports] = useState<Array<{id: string, nom: string, ville: string, paysId: string}>>([]);
+  const [aeroportsFiltered, setAeroportsFiltered] = useState<Array<{id: string, nom: string, ville: string, paysId: string}>>([]);
+  const [isLoadingRefs, setIsLoadingRefs] = useState(true);
+  
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -37,8 +45,43 @@ export default function RegisterPage() {
     dateNaissance: '',
   });
 
+  // Fetch reference data on mount
+  useEffect(() => {
+    const fetchReferences = async () => {
+      try {
+        const [paysRes, aerRes] = await Promise.all([
+          referencesApi.pays(),
+          referencesApi.aeroports()
+        ]);
+        setPays(paysRes.data);
+        setAeroports(aerRes.data);
+      } catch (error) {
+        console.error('Error fetching references:', error);
+        toast.error('Erreur lors du chargement des données de référence');
+      } finally {
+        setIsLoadingRefs(false);
+      }
+    };
+    fetchReferences();
+  }, []);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+  
+  const handleSelectChange = (field: string, value: string) => {
+    setFormData(prev => {
+      const newData = { ...prev, [field]: value };
+      
+      // Cascade: when pays changes, filter airports and reset aeroport selection
+      if (field === 'paysId') {
+        const filtered = aeroports.filter(a => a.paysId === value);
+        setAeroportsFiltered(filtered);
+        newData.aeroportId = ''; // Reset airport selection
+      }
+      
+      return newData;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -248,33 +291,37 @@ export default function RegisterPage() {
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div className="space-y-2">
                     <Label htmlFor="paysId">Pays d&apos;affectation *</Label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground z-10" />
-                      <Input
-                        id="paysId"
-                        name="paysId"
-                        placeholder="ID Pays (ex: cm500...)"
-                        value={formData.paysId}
-                        onChange={handleChange}
-                        className="pl-10 bg-white/80 backdrop-blur"
-                        required
-                      />
-                    </div>
+                    <Select
+                      value={formData.paysId}
+                      onValueChange={(value) => handleSelectChange('paysId', value)}
+                      disabled={isLoadingRefs}
+                    >
+                      <SelectTrigger className="bg-white/80 backdrop-blur">
+                        <SelectValue placeholder={isLoadingRefs ? "Chargement..." : "Selectionnez un pays"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {pays.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>{p.nomFr}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="aeroportId">Aeroport *</Label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground z-10" />
-                      <Input
-                        id="aeroportId"
-                        name="aeroportId"
-                        placeholder="ID Aeroport (ex: cm500...)"
-                        value={formData.aeroportId}
-                        onChange={handleChange}
-                        className="pl-10 bg-white/80 backdrop-blur"
-                        required
-                      />
-                    </div>
+                    <Select
+                      value={formData.aeroportId}
+                      onValueChange={(value) => handleSelectChange('aeroportId', value)}
+                      disabled={!formData.paysId || aeroportsFiltered.length === 0}
+                    >
+                      <SelectTrigger className="bg-white/80 backdrop-blur">
+                        <SelectValue placeholder={!formData.paysId ? "Selectionnez d'abord un pays" : "Selectionnez un aeroport"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {aeroportsFiltered.map((a) => (
+                          <SelectItem key={a.id} value={a.id}>{a.nom} ({a.ville})</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -361,8 +408,8 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? (
+              <Button type="submit" className="w-full" disabled={isLoading || isLoadingRefs}>
+                {isLoading || isLoadingRefs ? (
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                 ) : (
                   "S'inscrire"

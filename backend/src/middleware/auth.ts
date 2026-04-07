@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../index.js';
-import type { Role } from '../../../shared/types/index.js';
+import type { Role } from '../../shared/types/index.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'aerocheck-secret-key-2024';
 
@@ -51,8 +51,8 @@ export const authenticate = async (
       role: user.role as Role,
       firstName: user.firstName,
       lastName: user.lastName,
-      pays: user.pays || undefined,
-      aeroport: user.aeroport || undefined
+      pays: user.paysId || undefined,
+      aeroport: user.aeroportId || undefined
     };
 
     next();

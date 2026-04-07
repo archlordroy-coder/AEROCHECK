@@ -192,11 +192,15 @@ export const documentsApi = {
       method: 'DELETE',
     }),
 
-  upload: (agentId: string, data: FormData) =>
-    request<ApiResponse<Document>>(`/api/agents/${agentId}/documents`, {
+  upload: (agentId: string, data: FormData) => {
+    if (!data.has('agentId')) {
+      data.append('agentId', agentId);
+    }
+    return request<ApiResponse<Document>>('/api/documents', {
       method: 'POST',
       body: data,
-    }),
+    });
+  },
 };
 
 // Licenses API

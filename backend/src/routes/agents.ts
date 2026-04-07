@@ -1,4 +1,4 @@
-import { Router, Response } from 'express';
+import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../index.js';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
@@ -138,6 +138,9 @@ router.get('/with-doc-stats', authenticate, async (req: AuthRequest, res: Respon
       user: {
         select: { firstName: true, lastName: true, email: true }
       },
+      aeroport: {
+        select: { nom: true, code: true }
+      },
       documents: {
         select: { id: true, status: true, type: true }
       },
@@ -161,7 +164,7 @@ router.get('/with-doc-stats', authenticate, async (req: AuthRequest, res: Respon
       firstName: agent.user.firstName,
       lastName: agent.user.lastName,
       email: agent.user.email,
-      aeroport: agent.aeroport,
+      aeroport: agent.aeroport?.nom ?? agent.aeroport?.code ?? '',
       status: agent.status,
       documentStats: {
         total: totalDocs,

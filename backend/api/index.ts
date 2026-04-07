@@ -1,4 +1,4 @@
-import app from '../backend/src/index.js';
+import app from '../src/index.js';
 
 // Export for Vercel serverless
 export default app;

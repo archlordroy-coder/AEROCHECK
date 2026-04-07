@@ -23,6 +23,7 @@ export type DocumentType =
 export type DocStatus = 'EN_ATTENTE' | 'VALIDE' | 'REJETE' | 'EXPIRE';
 
 export type LicenseStatus = 'ACTIVE' | 'EXPIREE' | 'SUSPENDUE' | 'REVOQUEE';
+export type Sexe = 'M' | 'F';
 
 // User
 export interface User {

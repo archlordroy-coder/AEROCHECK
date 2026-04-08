@@ -201,7 +201,33 @@ $SSH_CMD $REMOTE_USER@$REMOTE_HOST "
 "
 
 # ============================================
-# 7. DÉMARRAGE AVEC PM2
+# 7. LIBÉRATION DU PORT 3009
+# ============================================
+
+echo "🔓 Vérification et libération du port $APP_PORT..."
+$SSH_CMD $REMOTE_USER@$REMOTE_HOST "
+    # Vérifier si le port est occupé
+    if lsof -i :$APP_PORT > /dev/null 2>&1; then
+        echo '   Port $APP_PORT occupé, arrêt des processus...'
+        PIDS=\$(lsof -t -i:$APP_PORT 2>/dev/null)
+        if [ -n \"\$PIDS\" ]; then
+            kill -9 \$PIDS 2>/dev/null || true
+            echo '   Processus arrêtés: '\$PIDS
+        fi
+        sleep 2
+    fi
+    
+    # Vérifier que le port est libre
+    if lsof -i :$APP_PORT > /dev/null 2>&1; then
+        echo '   ❌ ERREUR: Port $APP_PORT toujours occupé'
+        exit 1
+    else
+        echo '   ✅ Port $APP_PORT est libre'
+    fi
+"
+
+# ============================================
+# 8. DÉMARRAGE AVEC PM2
 # ============================================
 
 echo "🟢 Démarrage de l'application avec PM2..."
@@ -231,7 +257,7 @@ $SSH_CMD $REMOTE_USER@$REMOTE_HOST "
 "
 
 # ============================================
-# 8. HEALTH CHECK
+# 9. HEALTH CHECK
 # ============================================
 
 echo "🔍 Health check..."
@@ -272,7 +298,7 @@ if [[ "$FRONTEND_RESPONSE" != *"200"* ]] && [[ "$FRONTEND_RESPONSE" != *"304"* ]
 fi
 
 # ============================================
-# 9. RÉSUMÉ
+# 10. RÉSUMÉ
 # ============================================
 
 echo ""

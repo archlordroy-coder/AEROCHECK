@@ -47,17 +47,6 @@ app.use(express.json());
 // Static files for uploads
 app.use('/uploads', express.static(uploadsDir));
 
-// Serve frontend static files (production build)
-const frontendDistPath = path.join(__dirname, '../../../frontend/dist');
-if (fs.existsSync(frontendDistPath)) {
-  app.use(express.static(frontendDistPath));
-  
-  // SPA catch-all route - serve index.html for non-API routes
-  app.get('*', (_req, res) => {
-    res.sendFile(path.join(frontendDistPath, 'index.html'));
-  });
-}
-
 // Health check
 app.get('/api/health', (_req, res) => {
   const dbInfo = getDbInfo();
@@ -70,7 +59,7 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
-// Routes
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/agents', agentRoutes);
 app.use('/api/documents', documentRoutes);
@@ -81,6 +70,17 @@ app.use('/api/archive', archiveRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/references', referencesRoutes);
 app.use('/api/airports', airportsRoutes);
+
+// Serve frontend static files (production build) - MUST be after API routes
+const frontendDistPath = path.join(__dirname, '../../../frontend/dist');
+if (fs.existsSync(frontendDistPath)) {
+  app.use(express.static(frontendDistPath));
+  
+  // SPA catch-all route - serve index.html for non-API routes
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(frontendDistPath, 'index.html'));
+  });
+}
 
 // Error handler
 app.use(errorHandler);

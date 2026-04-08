@@ -72,14 +72,30 @@ app.use('/api/references', referencesRoutes);
 app.use('/api/airports', airportsRoutes);
 
 // Serve frontend static files (production build) - MUST be after API routes
-const frontendDistPath = path.join(__dirname, '../../../frontend/dist');
-if (fs.existsSync(frontendDistPath)) {
+const possiblePaths = [
+  path.join(__dirname, '../dist/frontend'),      // Copied dist in backend/dist/frontend
+  path.join(__dirname, '../../dist/frontend'), // Alternative location
+  path.join(__dirname, '../../../frontend/dist'), // Original frontend/dist
+];
+
+let frontendDistPath: string | null = null;
+for (const p of possiblePaths) {
+  if (fs.existsSync(p) && fs.existsSync(path.join(p, 'index.html'))) {
+    frontendDistPath = p;
+    console.log(`[AEROCHECK] Frontend found at: ${p}`);
+    break;
+  }
+}
+
+if (frontendDistPath) {
   app.use(express.static(frontendDistPath));
   
   // SPA catch-all route - serve index.html for non-API routes
   app.get('*', (_req, res) => {
-    res.sendFile(path.join(frontendDistPath, 'index.html'));
+    res.sendFile(path.join(frontendDistPath!, 'index.html'));
   });
+} else {
+  console.log('[AEROCHECK] Warning: Frontend dist not found');
 }
 
 // Error handler

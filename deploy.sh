@@ -86,11 +86,19 @@ log_info "Initialisation de la base SQLite..."
 npm run db:init
 log_success "Base de données SQLite prête"
 
-# 8. Installation des dépendances frontend (optionnel - si build statique)
-# log_info "Installation des dépendances frontend..."
-# cd "$PROJECT_DIR/frontend"
-# npm ci
-# npm run build
+# 8. Build et copie du frontend
+log_info "Build du frontend..."
+cd "$PROJECT_DIR/frontend"
+npm ci
+VITE_API_URL=http://localhost:3009 npm run build
+
+# Copier le dist du frontend dans le backend
+log_info "Copie du dist frontend vers backend..."
+mkdir -p "$PROJECT_DIR/backend/dist/frontend"
+cp -r "$PROJECT_DIR/frontend/dist/"* "$PROJECT_DIR/backend/dist/frontend/"
+log_success "Frontend copié"
+
+cd "$PROJECT_DIR/backend"
 
 # 9. Créer le répertoire uploads s'il n'existe pas
 mkdir -p "$PROJECT_DIR/backend/uploads"

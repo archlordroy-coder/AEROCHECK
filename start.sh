@@ -23,7 +23,7 @@ fi
 # Forcer le mode développement pour ce script (sinon npm peut ignorer les devDependencies)
 export NODE_ENV=development
 
-BACKEND_PORT=${PORT:-${API_PORT:-3300}}
+BACKEND_PORT=${PORT:-${API_PORT:-3009}}
 FRONTEND_PORT=${FRONTEND_PORT:-3010}
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 

@@ -94,7 +94,7 @@ npm run dev:frontend
 URLs par defaut :
 
 - frontend : `http://localhost:3010`
-- backend : `http://localhost:3300`
+- backend : `http://localhost:3009`
 
 ## Scripts utiles
 

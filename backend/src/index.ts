@@ -33,10 +33,10 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// CORS configuration
+// CORS configuration - Accept any origin for external frontend
 const corsOrigins = process.env.CORS_ORIGINS 
   ? process.env.CORS_ORIGINS.split(',') 
-  : ['http://localhost:3010', 'http://127.0.0.1:3010'];
+  : true; // Allow all origins if no CORS_ORIGINS set
 
 app.use(cors({
   origin: corsOrigins,
@@ -71,33 +71,6 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/references', referencesRoutes);
 app.use('/api/airports', airportsRoutes);
 
-// Serve frontend static files (production build) - MUST be after API routes
-const possiblePaths = [
-  path.join(__dirname, '../dist/frontend'),      // Copied dist in backend/dist/frontend
-  path.join(__dirname, '../../dist/frontend'), // Alternative location
-  path.join(__dirname, '../../../frontend/dist'), // Original frontend/dist
-];
-
-let frontendDistPath: string | null = null;
-for (const p of possiblePaths) {
-  if (fs.existsSync(p) && fs.existsSync(path.join(p, 'index.html'))) {
-    frontendDistPath = p;
-    console.log(`[AEROCHECK] Frontend found at: ${p}`);
-    break;
-  }
-}
-
-if (frontendDistPath) {
-  app.use(express.static(frontendDistPath));
-  
-  // SPA catch-all route - serve index.html for non-API routes
-  app.get('*', (_req, res) => {
-    res.sendFile(path.join(frontendDistPath!, 'index.html'));
-  });
-} else {
-  console.log('[AEROCHECK] Warning: Frontend dist not found');
-}
-
 // Error handler
 app.use(errorHandler);
 
@@ -107,7 +80,8 @@ const isVercelDeployment = process.env.VERCEL === '1' || process.env.VERCEL_ENV 
 if (!isVercelDeployment) {
   app.listen(PORT, () => {
     console.log(`[AEROCHECK] Backend running on port ${PORT}`);
-    console.log(`[AEROCHECK] CORS origins: ${corsOrigins.join(', ')}`);
+    const corsDisplay = Array.isArray(corsOrigins) ? corsOrigins.join(', ') : '*';
+    console.log(`[AEROCHECK] CORS origins: ${corsDisplay}`);
     console.log(`[AEROCHECK] Database: ${getDbInfo().filePath}`);
   });
 

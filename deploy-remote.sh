@@ -182,17 +182,8 @@ $SSH_CMD $REMOTE_USER@$REMOTE_HOST "
     echo '   🗄️  Initialisation SQLite...'
     npm run db:init
 
-    cd $REMOTE_DIR/frontend
-    echo '   📦 npm install frontend...'
-    npm ci
-    echo '   🔨 npm run build frontend...'
-    VITE_API_URL=http://$REMOTE_HOST:$APP_PORT npm run build
-    
-    # Copier le dist du frontend dans le backend pour qu'il puisse le servir
-    echo '   📁 Copie du dist frontend vers backend...'
-    mkdir -p $REMOTE_DIR/backend/dist/frontend
-    cp -r $REMOTE_DIR/frontend/dist/* $REMOTE_DIR/backend/dist/frontend/
-    echo '   ✅ Frontend copié dans backend/dist/frontend'
+    # Frontend hébergé sur un autre serveur - pas besoin de build ici
+    echo '   ℹ️  Frontend hébergé externement - pas de build local'
 " || { echo "❌ Échec du build sur le serveur"; exit 1; }
 
 # ============================================

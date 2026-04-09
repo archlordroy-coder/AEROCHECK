@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-const appLogo = "/favicon.svg";
+const appLogo = "/logo/logosansfond.png";
 import {
   Activity,
   BellRing,

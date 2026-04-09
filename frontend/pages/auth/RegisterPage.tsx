@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-const appLogo = "/favicon.svg";
+const appLogo = "/logo/logosansfond.png";
 import { Lock, Mail, User, Phone, Calendar, MapPin, Briefcase, GraduationCap, Loader2, ArrowLeft, Home } from 'lucide-react';
 import { referencesApi } from '@/lib/api';
 

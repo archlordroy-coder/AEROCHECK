@@ -1,26 +1,14 @@
 {
   "version": 2,
-  "name": "aerocheck",
-  "buildCommand": "npm install && npm run build",
-  "installCommand": "npm install",
-  "outputDirectory": "dist",
+  "name": "aerocheck-frontend",
+  "buildCommand": "cd frontend && npm install && npm run build",
+  "installCommand": "cd frontend && npm install",
+  "outputDirectory": "frontend/dist",
   "framework": "vite",
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "/api/serverless.ts"
-    },
-    {
-      "source": "/favicon.ico",
-      "destination": "/favicon.ico"
-    },
-    {
-      "source": "/favicon.svg",
-      "destination": "/favicon.svg"
-    },
-    {
-      "source": "/logo/(.*)",
-      "destination": "/logo/$1"
+      "destination": "http://82.165.150.150:3300/index.php/api/:path*"
     },
     {
       "source": "/(.*)",
@@ -29,12 +17,11 @@
   ],
   "headers": [
     {
-      "source": "/api/(.*)",
+      "source": "/(.*)",
       "headers": [
-        { "key": "Access-Control-Allow-Credentials", "value": "true" },
         { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET,POST,PUT,DELETE,OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
+        { "key": "Access-Control-Allow-Methods", "value": "GET,POST,PUT,DELETE,OPTIONS,PATCH" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization, X-Requested-With" }
       ]
     }
   ],

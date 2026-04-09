@@ -236,14 +236,13 @@ $SSH_CMD $REMOTE_USER@$REMOTE_HOST "
     . ./.env
     set +a
     
-    # Arrêter les anciennes instances si elles existent
+    # Arrêter l'ancienne instance backend si elle existe
     pm2 delete $PM2_NAME 2>/dev/null || true
     pm2 delete $FRONTEND_PM2_NAME 2>/dev/null || true
     
-    # Démarrer les nouvelles instances
-    pm2 start ecosystem.config.cjs --env production --update-env || {
+    # Démarrer seulement le backend
+    pm2 start ecosystem.config.cjs --env production --only $PM2_NAME --update-env || {
         pm2 start ./backend/dist/backend/src/index.js --name $PM2_NAME --update-env -- --port $APP_PORT
-        pm2 start npm --name $FRONTEND_PM2_NAME --cwd $REMOTE_DIR/frontend -- run preview -- --host 0.0.0.0 --port $FRONT_PORT
     }
     
     # Sauvegarder la configuration
@@ -285,14 +284,6 @@ if [ "$HEALTH_PASSED" = false ]; then
     exit 1
 fi
 
-echo "🔍 Frontend check..."
-FRONTEND_RESPONSE=$($SSH_CMD $REMOTE_USER@$REMOTE_HOST "curl -s -I http://localhost:$FRONT_PORT 2>/dev/null | head -n 1 || echo ''")
-if [[ "$FRONTEND_RESPONSE" != *"200"* ]] && [[ "$FRONTEND_RESPONSE" != *"304"* ]]; then
-    echo "⚠️  Frontend check non concluant"
-    echo "📋 Logs PM2 frontend:"
-    $SSH_CMD $REMOTE_USER@$REMOTE_HOST "pm2 logs $FRONTEND_PM2_NAME --lines 20 || true"
-    exit 1
-fi
 
 # ============================================
 # 10. RÉSUMÉ
@@ -306,7 +297,7 @@ echo ""
 echo "📍 Informations d'accès:"
 echo "   Health Check: http://$REMOTE_HOST:$APP_PORT/api/health"
 echo "   API:          http://$REMOTE_HOST:$APP_PORT/api"
-echo "   Frontend:     http://$REMOTE_HOST:$FRONT_PORT"
+echo "   API Proxy:    http://$REMOTE_HOST:$APP_PORT/index.php"
 echo ""
 echo "🔧 Commandes PM2 utiles:"
 echo "   pm2 status                    - Voir le statut"

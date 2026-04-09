@@ -240,10 +240,17 @@ $SSH_CMD $REMOTE_USER@$REMOTE_HOST "
     pm2 delete $PM2_NAME 2>/dev/null || true
     pm2 delete $FRONTEND_PM2_NAME 2>/dev/null || true
     
-    # Démarrer seulement le backend
-    pm2 start ecosystem.config.cjs --env production --only $PM2_NAME --update-env || {
-        pm2 start ./backend/dist/backend/src/index.js --name $PM2_NAME --update-env -- --port $APP_PORT
-    }
+    # Démarrer seulement le backend avec l'environnement production
+    pm2 delete $PM2_NAME 2>/dev/null || true
+    pm2 flush $PM2_NAME 2>/dev/null || true
+    pm2 start ecosystem.config.cjs --env production --only $PM2_NAME
+    
+    # Vérifier que le backend a démarré
+    sleep 3
+    if ! pm2 describe $PM2_NAME | grep -q "online"; then
+        echo "   ❌ Échec du démarrage avec ecosystem.config.cjs, tentative avec commande directe..."
+        pm2 start ./backend/dist/backend/src/index.js --name $PM2_NAME --env PORT=$APP_PORT
+    fi
     
     # Sauvegarder la configuration
     pm2 save

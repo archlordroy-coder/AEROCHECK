@@ -25,7 +25,7 @@ const envPath = path.resolve(__dirname, '../../.env');
 dotenv.config({ path: envPath });
 
 const app = express();
-const PORT = process.env.PORT || 3300;
+const PORT = Number(process.env.PORT) || 3300;
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(process.cwd(), 'uploads');
@@ -78,7 +78,7 @@ app.use(errorHandler);
 const isVercelDeployment = process.env.VERCEL === '1' || process.env.VERCEL_ENV === 'production' || process.env.VERCEL_ENV === 'preview';
 
 if (!isVercelDeployment) {
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`[AEROCHECK] Backend running on port ${PORT}`);
     const corsDisplay = Array.isArray(corsOrigins) ? corsOrigins.join(', ') : '*';
     console.log(`[AEROCHECK] CORS origins: ${corsDisplay}`);

@@ -12,7 +12,7 @@ module.exports = {
       exec_mode: 'fork',
       env: {
         NODE_ENV: 'production',
-        PORT: 3009,
+        PORT: 3300,
       },
       log_file: '/var/log/pm2/aerocheck-combined.log',
       out_file: '/var/log/pm2/aerocheck-out.log',

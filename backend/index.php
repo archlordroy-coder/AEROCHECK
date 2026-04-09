@@ -2,11 +2,11 @@
 /**
  * AEROCHECK API Proxy
  * Ce fichier agit comme point d'entrée pour le frontend hébergé sur un autre serveur
- * Il transmet toutes les requêtes au backend Node.js sur le port 3009
+ * Il transmet toutes les requêtes au backend Node.js sur le port 3300
  */
 
 // Configuration
-$BACKEND_URL = 'http://127.0.0.1:3009';
+$BACKEND_URL = 'http://127.0.0.1:3300';
 $FRONTEND_ORIGIN = '*'; // Modifier selon le domaine du frontend externe
 
 // Activer CORS pour permettre au frontend externe d'accéder à l'API

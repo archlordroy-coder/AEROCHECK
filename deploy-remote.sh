@@ -22,7 +22,7 @@ REMOTE_HOST=${SERVER_IP:-"82.165.150.150"}
 REMOTE_DIR=${DEST_DIR:-"/var/www/AEROCHECK"}
 DOMAIN=${DOMAIN:-$REMOTE_HOST}
 SOURCE_DIR="$(pwd)"
-APP_PORT=${PORT:-${API_PORT:-3009}}
+APP_PORT=${PORT:-${API_PORT:-3300}}
 FRONT_PORT=${FRONTEND_PORT:-3010}
 PM2_NAME=${PM2_NAME:-"aerocheck-backend"}
 FRONTEND_PM2_NAME=${FRONTEND_PM2_NAME:-"aerocheck-frontend"}
@@ -198,7 +198,7 @@ $SSH_CMD $REMOTE_USER@$REMOTE_HOST "
 "
 
 # ============================================
-# 7. LIBÉRATION DU PORT 3009
+# 7. LIBÉRATION DU PORT 3300
 # ============================================
 
 echo "🔓 Vérification et libération du port $APP_PORT..."

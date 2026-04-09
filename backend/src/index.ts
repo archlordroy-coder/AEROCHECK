@@ -25,7 +25,7 @@ const envPath = path.resolve(__dirname, '../../.env');
 dotenv.config({ path: envPath });
 
 const app = express();
-const PORT = process.env.PORT || 3009;
+const PORT = process.env.PORT || 3300;
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(process.cwd(), 'uploads');

@@ -33,10 +33,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // Transférer la requête au backend
 $ch = curl_init($targetUrl);
 
-// Configurer curl
+// Configurer curl avec timeouts pour éviter les blocages
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $_SERVER['REQUEST_METHOD']);
+curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);  // Timeout connexion: 5 secondes
+curl_setopt($ch, CURLOPT_TIMEOUT, 10);      // Timeout total: 10 secondes
 
 // Headers à transférer
 $headers = [
@@ -64,9 +66,20 @@ $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
 
 if (curl_errno($ch)) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Proxy error', 'message' => curl_error($ch)]);
+    $errorMsg = curl_error($ch);
     curl_close($ch);
+    
+    // Log erreur pour debug
+    error_log("AEROCHECK Proxy Error: " . $errorMsg . " | URL: " . $targetUrl);
+    
+    http_response_code(503); // Service Unavailable
+    header("Content-Type: application/json");
+    echo json_encode([
+        'error' => 'Backend unreachable', 
+        'message' => 'Le serveur backend est temporairement inaccessible. Veuillez réessayer dans quelques instants.',
+        'details' => $errorMsg,
+        'backend' => $backendUrl
+    ]);
     exit;
 }
 

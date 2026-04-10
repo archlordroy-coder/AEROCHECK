@@ -1,0 +1,20 @@
+# AEROCHECK - Configuration Apache pour SPA React + API Proxy
+
+# Activer le rewrite engine
+RewriteEngine On
+
+# Gérer les requêtes API - rediriger vers api/index.php
+RewriteCond %{REQUEST_URI} ^/api/(.*)$
+RewriteRule ^api/(.*)$ api/index.php [L]
+
+# Pour les fichiers et dossiers qui existent, les servir directement
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Tout le reste vers index.html (SPA React)
+RewriteRule ^ index.html [L]
+
+# Configuration PHP si nécessaire
+php_value upload_max_filesize 10M
+php_value post_max_size 10M

@@ -2,15 +2,22 @@
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    RewriteBase /
 
     # Gérer les requêtes API - rediriger vers api/index.php
-    RewriteRule ^api/(.*)$ api/index.php [L]
+    RewriteRule ^api/(.*)$ api/index.php [L,QSA]
 
-    # Pour les fichiers et dossiers qui existent, les servir directement
+    # Pour les fichiers et dossiers qui existent physiquement, les servir directement
     RewriteCond %{REQUEST_FILENAME} -f [OR]
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
 
-    # Tout le reste vers index.html (SPA React)
+    # Tout le reste vers index.html (SPA React) - Gère le refresh des pages
     RewriteRule ^ index.html [L]
 </IfModule>
+
+# Désactiver le MultiViews qui peut interférer avec le routing SPA
+Options -MultiViews
+
+# Désactiver les indexes de dossiers
+Options -Indexes

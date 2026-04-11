@@ -1,23 +1,26 @@
 # AEROCHECK - Configuration Apache pour SPA React + API Proxy
 
+# Désactiver le MultiViews qui peut interférer avec le routing SPA
+Options -MultiViews -Indexes
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /
 
-    # Gérer les requêtes API - rediriger vers api/index.php
+    # 1. Gérer les requêtes API - rediriger vers api/index.php
     RewriteRule ^api/(.*)$ api/index.php [L,QSA]
 
-    # Pour les fichiers et dossiers qui existent physiquement, les servir directement
+    # 2. Ne pas réécrire les fichiers et dossiers qui existent physiquement
     RewriteCond %{REQUEST_FILENAME} -f [OR]
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
 
-    # Tout le reste vers index.html (SPA React) - Gère le refresh des pages
-    RewriteRule ^ index.html [L]
+    # 3. Ne pas réécrire les assets statiques (par sécurité)
+    RewriteRule \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|json)$ - [L]
+
+    # 4. Tout le reste vers index.html (SPA React) - Gère le refresh des pages
+    RewriteRule ^.*$ index.html [L]
 </IfModule>
 
-# Désactiver le MultiViews qui peut interférer avec le routing SPA
-Options -MultiViews
-
-# Désactiver les indexes de dossiers
-Options -Indexes
+# Gestion des erreurs pour SPA
+ErrorDocument 404 /index.html

@@ -18,15 +18,19 @@ interface User {
   lastName: string;
   role: UserRole;
   isActive: boolean;
+  paysId?: string;
+  aeroportId?: string;
   createdAt: string;
 }
 
 const roleLabels: Record<UserRole, string> = {
-  AGENT: 'Agent',
+  AGENT: 'Agent ATCO',
   QIP: 'Verificateur QIP',
   DLAA: 'Agent DLAA',
   DNA: 'Superviseur DNA',
-  SUPER_ADMIN: 'Administrateur',
+  SUPER_ADMIN: 'Super Administrateur',
+  ENA: 'Monitoring Aéroport',
+  SUP_REP: 'Monitoring Pays',
 };
 
 const roleColors: Record<UserRole, string> = {
@@ -35,6 +39,8 @@ const roleColors: Record<UserRole, string> = {
   DLAA: 'bg-emerald-100 text-emerald-800',
   DNA: 'bg-purple-100 text-purple-800',
   SUPER_ADMIN: 'bg-red-100 text-red-800',
+  ENA: 'bg-sky-100 text-sky-800',
+  SUP_REP: 'bg-teal-100 text-teal-800',
 };
 
 export default function UserManagement() {
@@ -46,17 +52,35 @@ export default function UserManagement() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const { toast } = useToast();
 
+  const [pays, setPays] = useState<any[]>([]);
+  const [aeroports, setAeroports] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     firstName: '',
     lastName: '',
     role: 'AGENT' as UserRole,
+    paysId: '',
+    aeroportId: '',
   });
 
   useEffect(() => {
     fetchUsers();
+    fetchReferences();
   }, []);
+
+  const fetchReferences = async () => {
+    try {
+      const [paysRes, aeroRes] = await Promise.all([
+        api.get<{ data: any[] }>('/references/pays'),
+        api.get<{ data: any[] }>('/references/aeroports')
+      ]);
+      setPays(paysRes.data.data || []);
+      setAeroports(aeroRes.data.data || []);
+    } catch (e) {
+      console.error('Refs error', e);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -100,6 +124,8 @@ export default function UserManagement() {
         firstName: formData.firstName,
         lastName: formData.lastName,
         role: formData.role,
+        paysId: formData.paysId,
+        aeroportId: formData.aeroportId,
       });
       toast({
         title: 'Succes',
@@ -143,6 +169,8 @@ export default function UserManagement() {
       firstName: '',
       lastName: '',
       role: 'AGENT',
+      paysId: '',
+      aeroportId: '',
     });
   };
 
@@ -154,6 +182,8 @@ export default function UserManagement() {
       firstName: user.firstName,
       lastName: user.lastName,
       role: user.role,
+      paysId: user.paysId || '',
+      aeroportId: user.aeroportId || '',
     });
   };
 
@@ -189,7 +219,7 @@ export default function UserManagement() {
               Nouvel Utilisateur
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Creer un Utilisateur</DialogTitle>
               <DialogDescription>
@@ -251,6 +281,44 @@ export default function UserManagement() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {(formData.role === 'QIP' || formData.role === 'DLAA' || formData.role === 'SUP_REP' || formData.role === 'ENA' || formData.role === 'AGENT') && (
+                <div className="space-y-2">
+                  <Label htmlFor="paysId">Pays d'affectation</Label>
+                  <Select
+                    value={formData.paysId}
+                    onValueChange={(value) => setFormData({ ...formData, paysId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choisir un pays" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {pays.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>{p.nomFr || p.nom}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {(formData.role === 'ENA' || (formData.role === 'AGENT' && formData.paysId)) && (
+                <div className="space-y-2">
+                  <Label htmlFor="aeroportId">Aéroport / Site</Label>
+                  <Select
+                    value={formData.aeroportId}
+                    onValueChange={(value) => setFormData({ ...formData, aeroportId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choisir un aéroport" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {aeroports.filter(a => !formData.paysId || a.paysId === formData.paysId).map((a) => (
+                        <SelectItem key={a.id} value={a.id}>{a.nom}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
@@ -293,15 +361,12 @@ export default function UserManagement() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Staff</CardTitle>
+            <CardTitle className="text-sm font-medium">Staff Management</CardTitle>
             <AlertCircle className="h-4 w-4 text-amber-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-amber-600">
-              {(userStats.byRole['QIP'] || 0) +
-                (userStats.byRole['DLAA'] || 0) +
-                (userStats.byRole['DNA'] || 0) +
-                (userStats.byRole['SUPER_ADMIN'] || 0)}
+              {userStats.total - (userStats.byRole['AGENT'] || 0)}
             </div>
           </CardContent>
         </Card>
@@ -341,79 +406,86 @@ export default function UserManagement() {
             </Select>
           </div>
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nom</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead>Date creation</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
-                    Chargement...
-                  </TableCell>
+                  <TableHead>Nom</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead>Date creation</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ) : filteredUsers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    Aucun utilisateur trouve
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">
-                      {user.firstName} {user.lastName}
-                    </TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>
-                      <Badge className={roleColors[user.role]}>
-                        {roleLabels[user.role]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={user.isActive ? 'default' : 'secondary'}>
-                        {user.isActive ? 'Actif' : 'Inactif'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {new Date(user.createdAt).toLocaleDateString('fr-FR')}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openEdit(user)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleToggleActive(user)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8">
+                      Chargement...
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : filteredUsers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      Aucun utilisateur trouve
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredUsers.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium">
+                        {user.firstName} {user.lastName}
+                      </TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>
+                        <Badge className={roleColors[user.role]}>
+                          {roleLabels[user.role]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={user.isActive ? 'default' : 'secondary'}>
+                          {user.isActive ? 'Actif' : 'Inactif'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(user.createdAt).toLocaleDateString('fr-FR', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric'
+                        })}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEdit(user)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleToggleActive(user)}
+                            className={user.isActive ? 'text-destructive' : 'text-green-600'}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
       {/* Edit Dialog */}
       <Dialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Modifier l&apos;Utilisateur</DialogTitle>
             <DialogDescription>
@@ -439,6 +511,7 @@ export default function UserManagement() {
                 />
               </div>
             </div>
+            
             <div className="space-y-2">
               <Label htmlFor="edit-role">Role</Label>
               <Select
@@ -457,6 +530,44 @@ export default function UserManagement() {
                 </SelectContent>
               </Select>
             </div>
+
+            {(formData.role === 'QIP' || formData.role === 'DLAA' || formData.role === 'SUP_REP' || formData.role === 'ENA' || formData.role === 'AGENT') && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-paysId">Pays d'affectation</Label>
+                <Select
+                  value={formData.paysId}
+                  onValueChange={(value) => setFormData({ ...formData, paysId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choisir un pays" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pays.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.nomFr || p.nom}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {(formData.role === 'ENA' || (formData.role === 'AGENT' && formData.paysId)) && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-aeroportId">Aéroport / Site</Label>
+                <Select
+                  value={formData.aeroportId}
+                  onValueChange={(value) => setFormData({ ...formData, aeroportId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choisir un aéroport" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {aeroports.filter(a => !formData.paysId || a.paysId === formData.paysId).map((a) => (
+                      <SelectItem key={a.id} value={a.id}>{a.nom}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingUser(null)}>

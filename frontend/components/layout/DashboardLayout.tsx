@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 const appLogo = '/logo/logosansfond.png';
+import NotificationCenter from './NotificationCenter';
 import {
   LayoutDashboard,
   User,
@@ -39,12 +40,15 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: 'Tableau de bord', href: '/app/dashboard', icon: LayoutDashboard, roles: ['AGENT', 'QIP', 'DLAA', 'DNA', 'SUPER_ADMIN'] },
-  { label: 'Mon Profil', href: '/app/profile', icon: User, roles: ['AGENT'] },
-  { label: 'Soumettre Documents', href: '/app/documents/submit', icon: FileText, roles: ['AGENT'] },
-  { label: 'Ma Licence', href: '/app/license', icon: CreditCard, roles: ['AGENT'] },
+  { label: 'Tableau de bord', href: '/app/dashboard', icon: LayoutDashboard, roles: ['AGENT', 'QIP', 'DLAA', 'DNA', 'SUPER_ADMIN', 'ENA', 'SUP_REP'] },
+  { label: 'Mon Espace Agent', href: '/app/agent/dashboard', icon: LayoutDashboard, roles: ['QIP'] },
+  { label: 'Mon Profil', href: '/app/profile', icon: User, roles: ['AGENT', 'QIP'] },
+  { label: 'Soumettre Documents', href: '/app/documents/submit', icon: FileText, roles: ['AGENT', 'QIP'] },
+  { label: 'Ma Licence', href: '/app/license', icon: CreditCard, roles: ['AGENT', 'QIP'] },
   { label: 'Verification QIP', href: '/app/qip', icon: CheckCircle, roles: ['QIP', 'SUPER_ADMIN', 'DNA'] },
   { label: 'Emission DLAA', href: '/app/dlaa', icon: Award, roles: ['DLAA', 'SUPER_ADMIN', 'DNA'] },
+  { label: 'Monitoring Aéroport', href: '/app/monitoring/airport', icon: BarChart3, roles: ['ENA', 'SUPER_ADMIN'] },
+  { label: 'Monitoring Pays', href: '/app/monitoring/country', icon: BarChart3, roles: ['SUP_REP', 'SUPER_ADMIN'] },
   { label: 'Supervision', href: '/app/supervision', icon: BarChart3, roles: ['DNA', 'SUPER_ADMIN'] },
   { label: 'Administration', href: '/app/admin', icon: Settings, roles: ['SUPER_ADMIN', 'DNA'] },
   { label: 'Utilisateurs', href: '/app/admin/users', icon: Users, roles: ['SUPER_ADMIN', 'DNA'] },
@@ -174,7 +178,10 @@ export default function DashboardLayout() {
             </h2>
           </div>
 
-          <DropdownMenu>
+          <div className="flex items-center gap-2">
+            <NotificationCenter />
+            
+            <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="gap-2">
                 <Avatar className="h-8 w-8">
@@ -198,7 +205,8 @@ export default function DashboardLayout() {
                 Se deconnecter
               </DropdownMenuItem>
             </DropdownMenuContent>
-          </DropdownMenu>
+            </DropdownMenu>
+          </div>
         </header>
 
         {/* Page content */}

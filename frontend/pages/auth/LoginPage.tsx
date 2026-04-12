@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 const appLogo = "/logo/logosansfond.png";
-import { Lock, Mail, ArrowLeft, Home } from 'lucide-react';
+import { Lock, Mail, ArrowLeft, Home, Shield, FileSearch, Award, User, TrendingUp, Plane, Globe } from 'lucide-react';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -132,51 +132,88 @@ export default function LoginPage() {
               </Link>
             </div>
 
-            <div className="mt-6 rounded-lg border bg-muted/50 p-4">
-              <p className="mb-3 text-xs font-medium text-muted-foreground">Comptes de demonstration (cliquez pour remplir) :</p>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => { setEmail('admin@aerocheck.com'); setPassword('password123'); }}
-                  className="text-xs justify-start"
-                >
-                  <span className="font-medium">Admin</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => { setEmail('qip1@aerocheck.com'); setPassword('password123'); }}
-                  className="text-xs justify-start"
-                >
-                  <span className="font-medium">QIP</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => { setEmail('dlaa1@aerocheck.com'); setPassword('password123'); }}
-                  className="text-xs justify-start"
-                >
-                  <span className="font-medium">DLAA</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => { setEmail('agent1@test.com'); setPassword('password123'); }}
-                  className="text-xs justify-start"
-                >
-                  <span className="font-medium">Agent ATCO</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => { setEmail('dna@aerocheck.com'); setPassword('password123'); }}
-                  className="text-xs justify-start"
-                >
-                  <span className="font-medium">Superviseur ASECNA</span>
-                </Button>
+            <div className="mt-8">
+              <div className="relative mb-6">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-muted-foreground/20" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground font-medium">Comptes de Test Officiels</span>
+                </div>
               </div>
-              <p className="mt-2 text-xs text-muted-foreground text-center italic">Mot de passe: password123</p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  {
+                    role: 'Super Admin',
+                    email: 'admin@aerocheck.com',
+                    icon: <Shield className="h-4 w-4" />,
+                    desc: 'Gestion totale & Audit',
+                    color: 'text-blue-600 bg-blue-50 border-blue-100'
+                  },
+                  {
+                    role: 'Vérificateur QIP',
+                    email: 'qip1@aerocheck.com',
+                    icon: <FileSearch className="h-4 w-4" />,
+                    desc: 'Vérification documents',
+                    color: 'text-amber-600 bg-amber-50 border-amber-100'
+                  },
+                  {
+                    role: 'Délivreur DLAA',
+                    email: 'dlaa1@aerocheck.com',
+                    icon: <Award className="h-4 w-4" />,
+                    desc: 'Émission de licences',
+                    color: 'text-emerald-600 bg-emerald-50 border-emerald-100'
+                  },
+                  {
+                    role: 'Agent ATCO',
+                    email: 'agent1@test.com',
+                    icon: <User className="h-4 w-4" />,
+                    desc: 'Soumission & Profil',
+                    color: 'text-indigo-600 bg-indigo-50 border-indigo-100'
+                  },
+                  {
+                    role: 'Superviseur DNA',
+                    email: 'dna@aerocheck.com',
+                    icon: <TrendingUp className="h-4 w-4" />,
+                    desc: 'Analyses & Monitoring',
+                    color: 'text-purple-600 bg-purple-50 border-purple-100'
+                  },
+                  {
+                    role: 'Monitoring ENA',
+                    email: 'ena@aerocheck.com',
+                    icon: <Plane className="h-4 w-4" />,
+                    desc: 'Suivi Aéroport',
+                    color: 'text-sky-600 bg-sky-50 border-sky-100'
+                  },
+                  {
+                    role: 'Representant Pays',
+                    email: 'suprep@aerocheck.com',
+                    icon: <Globe className="h-4 w-4" />,
+                    desc: 'Gestion Nationale',
+                    color: 'text-teal-600 bg-teal-50 border-teal-100'
+                  }
+                ].map((demo) => (
+                  <button
+                    key={demo.email}
+                    type="button"
+                    onClick={() => { setEmail(demo.email); setPassword('password123'); }}
+                    className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all hover:scale-105 active:scale-95 group ${demo.color}`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="p-1 rounded-md bg-white/80">
+                        {demo.icon}
+                      </div>
+                      <span className="text-xs font-bold leading-none">{demo.role}</span>
+                    </div>
+                    <p className="text-[10px] opacity-80 font-medium mb-1 truncate w-full">{demo.email}</p>
+                    <p className="text-[10px] italic leading-tight opacity-70 group-hover:opacity-100 transition-opacity">{demo.desc}</p>
+                  </button>
+                ))}
+              </div>
+              <p className="mt-4 text-[10px] text-muted-foreground text-center animate-pulse">
+                Mot de passe commun : <span className="font-bold">password123</span>
+              </p>
             </div>
           </CardContent>
         </Card>

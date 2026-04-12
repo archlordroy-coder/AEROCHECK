@@ -56,9 +56,11 @@ function buildAgentInput(body: Record<string, unknown>, existing?: Agent) {
   if ('grade' in body) payload.grade = body.grade == null ? undefined : pickEnumValue(body.grade, GRADES);
   if ('instructeur' in body) payload.instructeur = parseBoolean(body.instructeur);
   if ('posteAdministratif' in body) payload.posteAdministratif = body.posteAdministratif == null ? undefined : pickEnumValue(body.posteAdministratif, POSTES_ADMIN);
-  if ('employeurId' in body) payload.employeurId = asTrimmedString(body.employeurId);
   if ('paysId' in body) payload.paysId = asTrimmedString(body.paysId);
   if ('aeroportId' in body) payload.aeroportId = asTrimmedString(body.aeroportId);
+  
+  // Rule: Agents are always employed by ASECNA
+  payload.employeurId = 'emp-asecna';
   if ('zoneAcces' in body) payload.zoneAcces = parseStringArray(body.zoneAcces);
   if ('status' in body) payload.status = pickEnumValue(body.status, AGENT_STATUSES);
   if ('sexe' in body) payload.sexe = body.sexe == null ? undefined : pickEnumValue(body.sexe, SEXES);
@@ -106,6 +108,12 @@ router.get('/', authenticate, (req: AuthRequest, res) => {
   let items = listAgents();
   if (scopedAgent) {
     items = items.filter((agent) => agent.id === scopedAgent.id);
+  } else if (req.user?.role === 'ENA') {
+    items = items.filter((agent) => agent.aeroportId === (req.user as any).aeroportId);
+  } else if (req.user?.role === 'SUP_REP' || req.user?.role === 'QIP' || req.user?.role === 'DLAA') {
+    items = items.filter((agent) => agent.paysId === (req.user as any).paysId);
+  } else if (req.user?.role === 'DNA' || req.user?.role === 'SUPER_ADMIN') {
+    // All countries access
   }
 
   if (status) {
@@ -285,7 +293,7 @@ router.post('/', authenticate, (req: AuthRequest, res) => {
     grade: parsed.payload.grade,
     instructeur: parsed.payload.instructeur ?? false,
     posteAdministratif: parsed.payload.posteAdministratif ?? 'AUCUN',
-    employeurId: parsed.payload.employeurId!,
+    employeurId: 'emp-asecna',
     paysId: parsed.payload.paysId!,
     aeroportId: parsed.payload.aeroportId!,
     zoneAcces: parsed.payload.zoneAcces ?? [],

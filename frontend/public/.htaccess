@@ -1,26 +1,20 @@
-# AEROCHECK - Configuration Apache pour SPA React + API Proxy
+Options +FollowSymLinks
+RewriteEngine On
+RewriteBase /
 
-# Désactiver le MultiViews qui peut interférer avec le routing SPA
-Options -MultiViews -Indexes
+# Pass Authorization header to PHP
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-<IfModule mod_rewrite.c>
-    RewriteEngine On
-    RewriteBase /
+# Redirect /api requests to index.php
+# On utilise QSA pour garder les paramètres de requête et L pour arrêter là si ça matche
+RewriteRule ^api/(.*)$ index.php/api/$1 [L,QSA]
 
-    # 1. Gérer les requêtes API - rediriger vers api/index.php
-    RewriteRule ^api/(.*)$ api/index.php [L,QSA]
-
-    # 2. Ne pas réécrire les fichiers et dossiers qui existent physiquement
-    RewriteCond %{REQUEST_FILENAME} -f [OR]
-    RewriteCond %{REQUEST_FILENAME} -d
-    RewriteRule ^ - [L]
-
-    # 3. Ne pas réécrire les assets statiques (par sécurité)
-    RewriteRule \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|json)$ - [L]
-
-    # 4. Tout le reste vers index.html (SPA React) - Gère le refresh des pages
-    RewriteRule ^.*$ index.html [L]
-</IfModule>
-
-# Gestion des erreurs pour SPA
-ErrorDocument 404 /index.html
+# Standard SPA support (redirect non-files to index.html)
+# On vérifie que le fichier ou dossier n'existe pas physiquement
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+# On ignore index.php et tout autre fichier .php pour laisser le serveur les exécuter
+RewriteCond %{REQUEST_URI} !\.php$
+# On redirige vers index.html pour le routing React
+RewriteRule . index.html [L]

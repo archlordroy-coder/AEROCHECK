@@ -16,6 +16,7 @@ import archiveRoutes from './routes/archive.js';
 import adminRoutes from './routes/admin.js';
 import referencesRoutes from './routes/references.js';
 import airportsRoutes from './routes/airports.js';
+import { startExpirationCron } from './jobs/expirationChecker.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 // Charger les variables d'environnement depuis le .env racine
@@ -83,6 +84,9 @@ if (!isVercelDeployment) {
     const corsDisplay = Array.isArray(corsOrigins) ? corsOrigins.join(', ') : '*';
     console.log(`[AEROCHECK] CORS origins: ${corsDisplay}`);
     console.log(`[AEROCHECK] Database: ${getDbInfo().filePath}`);
+    
+    // Start background jobs
+    startExpirationCron();
   });
 
   // Graceful shutdown

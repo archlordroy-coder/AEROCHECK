@@ -1,5 +1,5 @@
 // Enums
-export type Role = 'AGENT' | 'QIP' | 'DLAA' | 'DNA' | 'SUPER_ADMIN';
+export type Role = 'AGENT' | 'QIP' | 'DLAA' | 'DNA' | 'SUPER_ADMIN' | 'ENA' | 'SUP_REP';
 
 export type AgentStatus = 
   | 'EN_ATTENTE'
@@ -19,7 +19,7 @@ export type DocumentType =
   | 'JUSTIFICATIF_NOMINATION'
   | 'PHOTO_IDENTITE';
 
-export type DocStatus = 'EN_ATTENTE' | 'VALIDE' | 'REJETE' | 'EXPIRE';
+export type DocStatus = 'EN_ATTENTE' | 'VALIDE' | 'REJETE' | 'EXPIRE' | 'EN_ATTENTE_DLAA';
 
 export type LicenseStatus = 'ACTIVE' | 'EXPIREE' | 'SUSPENDUE' | 'REVOQUEE';
 export type Sexe = 'M' | 'F';
@@ -117,6 +117,26 @@ export interface License {
   updatedAt: string;
 }
 
+// Notification
+export interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  read: boolean;
+  createdAt: string;
+}
+
+// Audit Log
+export interface AuditLog {
+  id: string;
+  userId: string;
+  action: string;
+  targetId?: string;
+  details: string;
+  createdAt: string;
+}
+
 // API Responses
 export interface ApiResponse<T> {
   success: boolean;
@@ -182,10 +202,11 @@ export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
 };
 
 export const DOC_STATUS_LABELS: Record<DocStatus, string> = {
-  EN_ATTENTE: "En attente",
-  VALIDE: "Valide",
-  REJETE: "Rejete",
-  EXPIRE: "Expire"
+  EN_ATTENTE: "En attente (QIP)",
+  EN_ATTENTE_DLAA: "En attente (DLAA)",
+  VALIDE: "Validé",
+  REJETE: "Rejeté",
+  EXPIRE: "Expiré"
 };
 
 export const AGENT_STATUS_LABELS: Record<AgentStatus, string> = {
@@ -208,11 +229,13 @@ export const LICENSE_STATUS_LABELS: Record<LicenseStatus, string> = {
 };
 
 export const ROLE_LABELS: Record<Role, string> = {
-  AGENT: "Agent",
-  QIP: "Verificateur QIP",
+  AGENT: "Agent ATCO",
+  QIP: "Vérificateur QIP",
   DLAA: "Agent DLAA",
   DNA: "Superviseur DNA",
-  SUPER_ADMIN: "Super Administrateur"
+  SUPER_ADMIN: "Super Administrateur",
+  ENA: "Monitoring Aéroport (ENA)",
+  SUP_REP: "Monitoring Pays (Sup Rep)",
 };
 
 // African Countries - ASECNA Member States and other African countries

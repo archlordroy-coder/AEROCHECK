@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from 'sonner';
 import { 
   Table, 
   TableBody, 
@@ -37,8 +38,11 @@ import {
 } from 'lucide-react';
 import { DOCUMENT_TYPE_LABELS, AGENT_STATUS_LABELS, DOC_STATUS_LABELS } from '@shared/types';
 import type { Document, Agent } from '@shared/types';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
 
 interface Pays {
   id: string;
@@ -53,6 +57,12 @@ interface Aeroport {
   nom: string;
   ville: string;
   paysId: string;
+}
+
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+  }
 }
 
 export default function QIPDashboard() {
@@ -89,6 +99,8 @@ export default function QIPDashboard() {
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('pending');
+  const [filterDays, setFilterDays] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -130,6 +142,54 @@ export default function QIPDashboard() {
     fetchData();
   }, []);
 
+  const exportToExcel = () => {
+    const dataToExport = agents.map(agent => ({
+      Matricule: agent.matricule,
+      Nom: `${agent.firstName} ${agent.lastName}`,
+      Email: agent.email,
+      Aeroport: agent.aeroport,
+      Statut: AGENT_STATUS_LABELS[agent.status as keyof typeof AGENT_STATUS_LABELS] || agent.status,
+      DocumentsValides: agent.documentStats.validated,
+      DocumentsEnAttente: agent.documentStats.pending,
+      DocumentsRejetes: agent.documentStats.rejected
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Agents");
+    XLSX.writeFile(wb, `Agents_Pays_${user?.pays || 'Export'}.xlsx`);
+    toast.success('Liste exportée en Excel');
+  };
+
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    doc.text(`Liste des Agents - Pays: ${user?.pays || 'Inconnu'}`, 14, 15);
+    
+    const tableData = agents.map(agent => [
+      agent.matricule,
+      `${agent.firstName} ${agent.lastName}`,
+      agent.aeroport,
+      AGENT_STATUS_LABELS[agent.status as keyof typeof AGENT_STATUS_LABELS] || agent.status,
+      `${agent.documentStats.validated}/${agent.documentStats.total}`
+    ]);
+
+    doc.autoTable({
+      head: [['Matricule', 'Nom', 'Aeroport', 'Statut', 'Docs Validés']],
+      body: tableData,
+      startY: 20,
+    });
+
+    doc.save(`Agents_Pays_${user?.pays || 'Export'}.pdf`);
+    toast.success('Liste exportée en PDF');
+  };
+
+  const filteredAgents = agents.filter(agent => {
+    const matchesSearch = `${agent.firstName} ${agent.lastName} ${agent.matricule}`.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesAeroport = !selectedAeroport || agent.aeroport === selectedAeroport;
+    
+    return matchesSearch && matchesAeroport;
+  });
+
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -152,10 +212,26 @@ export default function QIPDashboard() {
           </p>
         </div>
         {user?.pays && (
-          <Badge variant="outline" className="flex items-center gap-1">
-            <MapPin className="h-3 w-3" />
-            {user.pays}
-          </Badge>
+          <div className="flex items-center gap-2">
+             <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={exportToExcel}>
+                Export Excel
+              </Button>
+              <Button variant="outline" size="sm" onClick={exportToPDF}>
+                Export PDF
+              </Button>
+            </div>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/app/profile">
+                <User className="mr-2 h-4 w-4" />
+                Mon Profil Agent
+              </Link>
+            </Button>
+            <Badge variant="outline" className="flex items-center gap-1">
+              <MapPin className="h-3 w-3" />
+              {user.pays}
+            </Badge>
+          </div>
         )}
       </div>
 
@@ -221,12 +297,12 @@ export default function QIPDashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {agents.map((agent) => {
+              {filteredAgents.map((agent) => {
                 const progress = agent.documentStats.total > 0 
                   ? (agent.documentStats.validated / agent.documentStats.total) * 100 
                   : 0;
                 return (
-                  <div key={agent.id} className="border rounded-lg p-4 space-y-3">
+                  <div key={agent.id} className="border rounded-lg p-4 space-y-3 bg-card hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="font-medium">
@@ -248,19 +324,24 @@ export default function QIPDashboard() {
                         </span>
                       </div>
                       <Progress value={progress} className="h-2" />
-                      <div className="flex gap-2 text-xs">
+                      <div className="flex flex-wrap gap-2 text-xs">
                         {agent.documentStats.pending > 0 && (
-                          <Badge className="bg-yellow-500/10 text-yellow-600">
+                          <Badge className="bg-yellow-500/10 text-yellow-600 border-none">
                             {agent.documentStats.pending} en attente
                           </Badge>
                         )}
                         {agent.documentStats.rejected > 0 && (
-                          <Badge className="bg-red-500/10 text-red-600">
+                          <Badge className="bg-red-500/10 text-red-600 border-none">
                             {agent.documentStats.rejected} rejetés
                           </Badge>
                         )}
                       </div>
                     </div>
+                    <Button asChild variant="ghost" size="sm" className="w-full mt-2 text-xs">
+                       <Link to={`/app/profile?agentId=${agent.id}`}>
+                         Voir profil complet
+                       </Link>
+                    </Button>
                   </div>
                 );
               })}
@@ -310,6 +391,28 @@ export default function QIPDashboard() {
                     .map((a) => (
                       <SelectItem key={a.id} value={a.id}>{a.nom} ({a.ville})</SelectItem>
                     ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Rechercher</Label>
+              <Input 
+                placeholder="Nom, prenom ou matricule..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Validité (jours restants)</Label>
+              <Select value={filterDays} onValueChange={setFilterDays}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Toutes les validites" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes les validites</SelectItem>
+                  <SelectItem value="expiring-90">Expire dans moins de 90j</SelectItem>
+                  <SelectItem value="expiring-30">Expire dans moins de 30j</SelectItem>
+                  <SelectItem value="expired">Déjà expiré</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -2,7 +2,7 @@ import express from 'express';
 import fs from 'fs';
 import multer from 'multer';
 import path from 'path';
-import { addDocument, createId, enrichAgent, getAgentById, getDocumentById, getStore, removeDocument, saveDocument, touch, updateAgentDerivedStatus } from '../db.js';
+import { addAuditLog, addDocument, addNotification, createId, enrichAgent, getAgentById, getDocumentById, getStore, removeDocument, saveDocument, touch, updateAgentDerivedStatus } from '../db.js';
 import { authenticate, type AuthRequest } from '../middleware/auth.js';
 import type { Agent, Document, DocStatus } from '../../shared/types/index.js';
 import { asTrimmedString, isValidDateInput, parsePositiveInt, pickEnumValue } from '../utils/validators.js';
@@ -17,16 +17,21 @@ function parseEnglishLevel(value: unknown): 4 | 5 | 6 | undefined {
 
 const router = express.Router();
 const DOCUMENT_TYPES = ['CERTIFICAT_MEDICAL', 'CONTROLE_COMPETENCE', 'NIVEAU_ANGLAIS', 'JUSTIFICATIF_NOMINATION'] as const;
-const DOCUMENT_STATUSES = ['EN_ATTENTE', 'VALIDE', 'REJETE', 'EXPIRE'] as const;
-const VALIDATION_STATUSES = ['VALIDE', 'REJETE'] as const;
+const DOCUMENT_STATUSES = ['EN_ATTENTE', 'VALIDE', 'REJETE', 'EXPIRE', 'EN_ATTENTE_DLAA'] as const;
+const VALIDATION_STATUSES = ['VALIDE', 'REJETE', 'EN_ATTENTE_DLAA'] as const;
 
 const uploadRoot = path.resolve(process.cwd(), 'uploads', 'documents');
 fs.mkdirSync(uploadRoot, { recursive: true });
 
 const storage = multer.diskStorage({
   destination: (req, _file, cb) => {
-    const agentId = String(req.body.agentId || 'misc');
+    const rawAgentId = String(req.body.agentId || 'misc');
+    // Basic sanitization to prevent directory traversal
+    const agentId = rawAgentId.replace(/[^a-zA-Z0-9_-]/g, ''); 
     const target = path.join(uploadRoot, agentId);
+    if (!target.startsWith(uploadRoot)) {
+       throw new Error('Invalid agent directory path');
+    }
     fs.mkdirSync(target, { recursive: true });
     cb(null, target);
   },
@@ -317,7 +322,7 @@ router.post('/', authenticate, upload.single('file'), (req: AuthRequest, res) =>
     type,
     fileName: req.file.originalname,
     filePath: path.relative(process.cwd(), req.file.path).replace(/\\/g, '/'),
-    status: 'EN_ATTENTE',
+    status: (req.user?.role === 'QIP' && type !== 'JUSTIFICATIF_NOMINATION') ? 'EN_ATTENTE_DLAA' : 'EN_ATTENTE',
     issuedAt,
     expiresAt: computeDocumentExpiry(agent, type, issuedAt, englishLevel),
     englishLevel,
@@ -327,6 +332,22 @@ router.post('/', authenticate, upload.single('file'), (req: AuthRequest, res) =>
 
   addDocument(document);
   updateAgentDerivedStatus(agent.id);
+
+  // Notify relevant parties
+  if (document.status === 'EN_ATTENTE_DLAA') {
+    // Notify DLAA if it skipped QIP validation
+    const dlaas = getStore().users.filter(u => u.role === 'DLAA' && u.aeroportId === agent.aeroportId);
+    for (const dlaa of dlaas) {
+      addNotification(dlaa.id, "Nouveau document (QIP)", `Le QIP (Agent) ${agent.matricule} a soumis un document nécessitant votre approbation.`);
+    }
+  } else {
+    // Notify QIP of the country
+    const qips = getStore().users.filter(u => u.role === 'QIP' && u.paysId === agent.paysId && u.id !== req.user?.id);
+    for (const qip of qips) {
+      addNotification(qip.id, "Nouveau document soumis", `L'agent ${agent.matricule} a soumis un nouveau document : ${type}`);
+    }
+  }
+
   res.status(201).json({ success: true, data: document });
 });
 
@@ -336,26 +357,62 @@ router.post('/:id/verify', authenticate, (req: AuthRequest, res) => {
     return;
   }
 
-  const legacyStatusMap: Record<string, DocStatus> = {
-    VERIFIED: 'VALIDE',
-    REJECTED: 'REJETE',
-    PENDING: 'EN_ATTENTE',
-    EXPIRED: 'EXPIRE',
-  };
-  const nextStatus = legacyStatusMap[String(req.body?.status)] ?? pickEnumValue(req.body?.status, VALIDATION_STATUSES);
-  if (!nextStatus) {
-    res.status(400).json({ success: false, error: 'Statut de verification invalide' });
-    return;
-  }
-
   const document = getDocumentById(req.params.id);
   if (!document) {
     res.status(404).json({ success: false, error: 'Document introuvable' });
     return;
   }
 
+  // PROMOTIONAL RULE: Nomination justification can ONLY be validated by Admin
+  if (document.type === 'JUSTIFICATIF_NOMINATION' && req.user?.role !== 'SUPER_ADMIN') {
+    res.status(403).json({ success: false, error: 'Sequestre administratif: Seul un Administrateur peut verifier le justificatif de nomination' });
+    return;
+  }
+
+  const role = req.user!.role;
+  const action = String(req.body?.status); // 'VALIDE' or 'REJETE'
+  let nextStatus: DocStatus = 'REJETE';
+
+  if (action === 'REJETE') {
+    nextStatus = 'REJETE';
+  } else if (action === 'VALIDE') {
+    if (role === 'QIP') {
+      nextStatus = 'EN_ATTENTE_DLAA';
+    } else if (role === 'DLAA') {
+      if (document.status !== 'EN_ATTENTE_DLAA') {
+         res.status(400).json({ success: false, error: 'Le document doit d\'abord etre valide par le QIP' });
+         return;
+      }
+      nextStatus = 'VALIDE';
+    } else if (role === 'DNA' || role === 'SUPER_ADMIN') {
+      nextStatus = 'VALIDE'; // Super users can bypass
+    }
+  } else {
+    res.status(400).json({ success: false, error: 'Action invalide' });
+    return;
+  }
+
   const saved = saveDocument(touch({ ...document, status: nextStatus }));
   updateAgentDerivedStatus(document.agentId);
+
+  // Notifications
+  const agent = getAgentById(document.agentId);
+  if (agent) {
+    if (nextStatus === 'REJETE') {
+      addNotification(agent.userId, "Document rejeté", `Votre document ${document.type} a été rejeté. Motif: ${req.body?.comment || 'Non spécifié'}`);
+    } else if (nextStatus === 'EN_ATTENTE_DLAA') {
+      // Notify DLAA
+      const dlaas = getStore().users.filter(u => u.role === 'DLAA' && u.paysId === agent.paysId);
+      for (const dlaa of dlaas) {
+        addNotification(dlaa.id, "Document en attente de validation DLAA", `Le document de l'agent ${agent.matricule} a été validé par le QIP.`);
+      }
+    } else if (nextStatus === 'VALIDE') {
+      addNotification(agent.userId, "Document validé", `Votre document ${document.type} a été validé par le DLAA.`);
+    }
+  }
+
+  addAuditLog(req.user!.id, action, `Validation du document ${document.id} (Type: ${document.type}) vers le statut ${nextStatus}`, document.id);
+
   res.json({ success: true, data: saved });
 });
 

@@ -4,6 +4,7 @@ import { agentsApi, licensesApi, statsApi, referencesApi } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
@@ -34,6 +35,10 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { filterLicenseDocuments, getRequiredLicenseDocumentTypes } from '@/lib/priority-documents';
 import { getLicenseMonitoringDate } from '@/lib/license-validity';
+import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
+import { toast } from 'sonner';
 
 interface Pays {
   id: string;
@@ -80,6 +85,8 @@ export default function DLAADashboard() {
     licencesExpirees: number;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterDays, setFilterDays] = useState('all');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -121,6 +128,50 @@ export default function DLAADashboard() {
     fetchData();
   }, []);
 
+  const exportToExcel = () => {
+    const dataToExport = agentsWithStats.map(agent => ({
+      Matricule: agent.matricule,
+      Nom: `${agent.firstName} ${agent.lastName}`,
+      Email: agent.email,
+      Aeroport: agent.aeroport,
+      Statut: AGENT_STATUS_LABELS[agent.status as keyof typeof AGENT_STATUS_LABELS] || agent.status,
+      DocsValides: agent.documentStats.validated
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Dossiers");
+    XLSX.writeFile(wb, `DLAA_Export_${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast.success('Registre exporté avec succès');
+  };
+
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    doc.text(`Registre de Délivrance DLAA - ${user?.pays || ''}`, 14, 15);
+    
+    const tableData = agentsWithStats.map(agent => [
+      agent.matricule,
+      `${agent.firstName} ${agent.lastName}`,
+      agent.aeroport,
+      AGENT_STATUS_LABELS[agent.status as keyof typeof AGENT_STATUS_LABELS] || agent.status
+    ]);
+
+    doc.autoTable({
+      head: [['Matricule', 'Nom', 'Aeroport', 'Statut']],
+      body: tableData,
+      startY: 20,
+    });
+
+    doc.save(`DLAA_Registre_${new Date().toISOString().split('T')[0]}.pdf`);
+    toast.success('Registre exporté en PDF');
+  };
+
+  const filteredAgents = agentsWithStats.filter(agent => {
+    const matchesSearch = `${agent.firstName} ${agent.lastName} ${agent.matricule}`.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesAeroport = !selectedAeroport || agent.aeroport === selectedAeroport || agent.id === selectedAeroport;
+    return matchesSearch && matchesAeroport;
+  });
+
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -160,11 +211,21 @@ export default function DLAADashboard() {
             Delivrance finale des licences aux agents valides QIP
           </p>
         </div>
-        {user?.aeroport && (
-          <Badge variant="outline" className="flex items-center gap-1">
-            <MapPin className="h-3 w-3" />
-            {user.aeroport}
-          </Badge>
+        {user?.pays && (
+          <div className="flex items-center gap-2">
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={exportToExcel}>
+                Export Excel
+              </Button>
+              <Button variant="outline" size="sm" onClick={exportToPDF}>
+                Export PDF
+              </Button>
+            </div>
+            <Badge variant="outline" className="flex items-center gap-1">
+              <MapPin className="h-3 w-3" />
+              {user.pays}
+            </Badge>
+          </div>
         )}
       </div>
 
@@ -294,6 +355,14 @@ export default function DLAADashboard() {
                         ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Rechercher</Label>
+                  <Input 
+                    placeholder="Matricule ou nom..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
                 </div>
               </div>
 
@@ -463,20 +532,25 @@ export default function DLAADashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {agentsWithStats.slice(0, 5).map((agent) => {
+                {filteredAgents.slice(0, 8).map((agent) => {
                   const progress = agent.documentStats.total > 0
                     ? (agent.documentStats.validated / agent.documentStats.total) * 100
                     : 0;
                   return (
-                    <div key={agent.id} className="rounded-lg border p-3">
+                    <div key={agent.id} className="rounded-lg border p-3 bg-card hover:shadow-sm transition-shadow">
                       <div className="flex items-center justify-between gap-3">
                         <div>
-                          <p className="font-medium">{agent.firstName} {agent.lastName}</p>
-                          <p className="text-xs text-muted-foreground">{agent.matricule} • {agent.aeroport}</p>
+                          <p className="font-medium text-sm">{agent.firstName} {agent.lastName}</p>
+                          <p className="text-[10px] text-muted-foreground">{agent.matricule} • {agent.aeroport}</p>
                         </div>
-                        <Badge variant="outline">{AGENT_STATUS_LABELS[agent.status as keyof typeof AGENT_STATUS_LABELS] || agent.status}</Badge>
+                        <Badge variant="outline" className="text-[10px]">{AGENT_STATUS_LABELS[agent.status as keyof typeof AGENT_STATUS_LABELS] || agent.status}</Badge>
                       </div>
-                      <Progress value={progress} className="mt-3 h-2" />
+                      <Progress value={progress} className="mt-3 h-1.5" />
+                      <Button asChild variant="ghost" size="sm" className="w-full mt-2 h-7 text-[10px]">
+                        <Link to={`/app/profile?agentId=${agent.id}`}>
+                          Consulter profile complet
+                        </Link>
+                      </Button>
                     </div>
                   );
                 })}

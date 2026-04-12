@@ -390,14 +390,30 @@ export default function DocumentSubmit() {
                         )}
                       </div>
                     </div>
-                    <Badge 
-                      variant="outline"
-                      className={doc ? getStatusColor(doc.status) : ''}
-                    >
-                      {doc 
-                        ? DOC_STATUS_LABELS[doc.status as keyof typeof DOC_STATUS_LABELS] 
-                        : 'Non soumis'}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge 
+                        variant="outline"
+                        className={doc ? getStatusColor(doc.status) : ''}
+                      >
+                        {doc 
+                          ? DOC_STATUS_LABELS[doc.status as keyof typeof DOC_STATUS_LABELS] 
+                          : 'Non soumis'}
+                      </Badge>
+                      {doc && (doc.status === 'EXPIRE' || doc.status === 'REJETE') && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => {
+                            setSelectedType(doc.type);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          className="h-7 px-2 text-primary hover:bg-primary/10"
+                        >
+                          <Upload className="mr-1 h-3 w-3" />
+                          Renouveler
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 );
               })}

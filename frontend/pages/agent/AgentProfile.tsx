@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { User, MapPin, Briefcase, Plane, Calendar, Save, Loader2, FileText, Award, Clock, CheckCircle, XCircle, AlertCircle, Camera } from 'lucide-react';
+import { User, MapPin, Briefcase, Plane, Calendar, Save, Loader2, FileText, Award, Clock, CheckCircle, XCircle, AlertCircle, Camera, Shield } from 'lucide-react';
 import { AGENT_STATUS_LABELS, LICENSE_STATUS_LABELS, DOCUMENT_TYPE_LABELS } from '@shared/types';
 import type { Agent, Document as AgentDocument, License } from '@shared/types';
 import { filterLicenseDocuments, getRequiredLicenseDocumentTypes, requiresJustificatif } from '@/lib/priority-documents';
@@ -57,7 +57,6 @@ export default function AgentProfile() {
   
   // Reference data from API
   const [nationalites, setNationalites] = useState<Nationalite[]>([]);
-  const [employeurs, setEmployeurs] = useState<Employeur[]>([]);
   const [pays, setPays] = useState<Pays[]>([]);
   const [aeroports, setAeroports] = useState<Aeroport[]>([]);
   const [aeroportsFiltered, setAeroportsFiltered] = useState<Aeroport[]>([]);
@@ -70,7 +69,7 @@ export default function AgentProfile() {
     grade: '' as '' | (typeof GRADES)[number],
     instructeur: false,
     posteAdministratif: 'AUCUN' as (typeof POSTES_ADMIN)[number],
-    employeurId: '',
+    employeurId: 'emp-asecna',
     paysId: '',
     aeroportId: '',
     sexe: '' as '' | 'M' | 'F',
@@ -78,6 +77,9 @@ export default function AgentProfile() {
     licenseStatus: 'VALIDE' as (typeof LICENSE_STATUSES)[number],
     whatsapp: ''
   });
+
+  const [passwords, setPasswords] = useState({ current: '', new: '' });
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   // Documents and licenses
   const [documents, setDocuments] = useState<AgentDocument[]>([]);
@@ -91,15 +93,13 @@ export default function AgentProfile() {
     const fetchData = async () => {
       try {
         // Fetch reference data
-        const [natRes, empRes, paysRes, aerRes] = await Promise.all([
+        const [natRes, paysRes, aerRes] = await Promise.all([
           referencesApi.nationalites(),
-          referencesApi.employeurs(),
           referencesApi.pays(),
           referencesApi.aeroports()
         ]);
         
         setNationalites(natRes.data);
-        setEmployeurs(empRes.data);
         setPays(paysRes.data);
         setAeroports(aerRes.data);
 
@@ -202,6 +202,15 @@ export default function AgentProfile() {
     e.preventDefault();
     setIsSaving(true);
 
+    const required = ['dateNaissance', 'nationaliteId', 'adresse', 'paysId', 'aeroportId'];
+    const missing = required.filter(field => !formData[field as keyof typeof formData]);
+    
+    if (missing.length > 0) {
+      toast.error('Veuillez remplir tous les champs obligatoires (Pays, Aéroport, Nationalité, Date de naissance, Adresse)');
+      setIsSaving(false);
+      return;
+    }
+
     try {
       if (agent) {
         const payload = {
@@ -231,10 +240,46 @@ export default function AgentProfile() {
         await refreshUser();
         navigate('/app/dashboard');
       }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Erreur lors de la sauvegarde');
+    } catch (error: any) {
+      // Improved error handling to show specific backend errors
+      const errorMessage = error.response?.data?.error || error.message || 'Erreur lors de la sauvegarde';
+      toast.error(errorMessage);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    if (!passwords.current || !passwords.new) {
+      toast.error('Veuillez remplir les deux champs de mot de passe');
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      const response = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          currentPassword: passwords.current,
+          newPassword: passwords.new
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Mot de passe mis à jour avec succès');
+        setPasswords({ current: '', new: '' });
+      } else {
+        toast.error(data.error || 'Erreur lors du changement de mot de passe');
+      }
+    } catch (error) {
+      toast.error('Erreur technique lors du changement de mot de passe');
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -271,81 +316,92 @@ export default function AgentProfile() {
           </Badge>
         )}
       </div>
+      
+      {/* Agent-specific view: Show photo and summary only for Agent/QIP */}
+      {(user?.role === 'AGENT' || user?.role === 'QIP') && (
+        <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+            <div className="flex w-full max-w-xs flex-col items-center gap-4 rounded-xl border border-dashed p-5 text-center">
+              <Avatar className="h-28 w-28 border bg-muted">
+                <AvatarImage src={profilePhotoUrl} alt="Photo de profil agent" />
+                <AvatarFallback className="text-lg font-semibold">{initials}</AvatarFallback>
+              </Avatar>
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Photo de profil</p>
+                <p className="text-xs text-muted-foreground">
+                  {agent?.photoUrl ? 'La photo est stockee sur le backend.' : 'Ajoutez une photo qui sera stockee sur le backend.'}
+                </p>
+              </div>
+              <div className="w-full">
+                <Label
+                  htmlFor="agent-photo-upload"
+                  className="flex cursor-pointer items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
+                >
+                  {isUploadingPhoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                  {isUploadingPhoto ? 'Upload en cours...' : 'Changer la photo'}
+                </Label>
+                <Input
+                  id="agent-photo-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={!agent || isUploadingPhoto}
+                  onChange={handlePhotoUpload}
+                />
+              </div>
+              {!agent && (
+                <p className="text-[10px] text-amber-600 mt-2 italic">
+                  L'upload sera disponible après la création de votre profil.
+                </p>
+              )}
+            </div>
+
+            <div className="grid flex-1 grid-cols-2 gap-4 md:grid-cols-4">
+              <div>
+                <p className="text-xs text-muted-foreground">Matricule</p>
+                <p className="font-mono font-medium">{agent?.matricule || '-'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Sexe</p>
+                <p className="font-medium">{formData.sexe === 'M' ? 'Masculin' : formData.sexe === 'F' ? 'Feminin' : '-'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Aeroport</p>
+                <p className="font-medium">
+                  {agent?.aeroport?.nom || aeroports.find(a => a.id === formData.aeroportId)?.nom || '-'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Pays</p>
+                <p className="font-medium">
+                  {agent?.pays?.nom || pays.find(p => p.id === formData.paysId)?.nom || '-'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Qualifications</p>
+                <div className="flex flex-wrap gap-1">
+                  {formData.qualifications.length > 0 ? (
+                    formData.qualifications.map(q => (
+                      <Badge key={q} variant="outline" className="text-xs">{q}</Badge>
+                    ))
+                  ) : (
+                    <span className="text-sm text-muted-foreground">-</span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">WhatsApp</p>
+                <p className="font-medium">{formData.whatsapp || '-'}</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    )}
 
       {agent && (
         <>
-          {/* Photo and Summary Card */}
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-                <div className="flex w-full max-w-xs flex-col items-center gap-4 rounded-xl border border-dashed p-5 text-center">
-                  <Avatar className="h-28 w-28 border bg-muted">
-                    <AvatarImage src={profilePhotoUrl} alt="Photo de profil agent" />
-                    <AvatarFallback className="text-lg font-semibold">{initials}</AvatarFallback>
-                  </Avatar>
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">Photo de profil</p>
-                    <p className="text-xs text-muted-foreground">
-                      {agent.photoUrl ? 'La photo est stockee sur le backend.' : 'Ajoutez une photo qui sera stockee sur le backend.'}
-                    </p>
-                  </div>
-                  <div className="w-full">
-                    <Label
-                      htmlFor="agent-photo-upload"
-                      className="flex cursor-pointer items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
-                    >
-                      {isUploadingPhoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-                      {isUploadingPhoto ? 'Upload en cours...' : 'Changer la photo'}
-                    </Label>
-                    <Input
-                      id="agent-photo-upload"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      disabled={!agent || isUploadingPhoto}
-                      onChange={handlePhotoUpload}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid flex-1 grid-cols-2 gap-4 md:grid-cols-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Matricule</p>
-                    <p className="font-mono font-medium">{agent.matricule}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Sexe</p>
-                    <p className="font-medium">{agent.sexe === 'M' ? 'Masculin' : agent.sexe === 'F' ? 'Feminin' : '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Aeroport</p>
-                    <p className="font-medium">{agent.aeroport?.nom || agent.aeroportId}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Pays</p>
-                    <p className="font-medium">{agent.pays?.nom || agent.paysId}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Qualifications</p>
-                    <div className="flex flex-wrap gap-1">
-                      {Array.isArray(agent.qualifications) && agent.qualifications.length > 0 ? (
-                        agent.qualifications.map(q => (
-                          <Badge key={q} variant="outline" className="text-xs">{q}</Badge>
-                        ))
-                      ) : (
-                        <span className="text-sm text-muted-foreground">-</span>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">WhatsApp</p>
-                    <p className="font-medium">{agent.whatsapp || '-'}</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Documents & Licenses */}
           <div className="grid gap-6 lg:grid-cols-2">
             {/* Documents List */}
@@ -594,19 +650,10 @@ export default function AgentProfile() {
 
               <div className="space-y-2">
                 <Label htmlFor="employeur">Employeur</Label>
-                <Select 
-                  value={formData.employeurId}
-                  onValueChange={(value) => handleChange('employeurId', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selectionnez un employeur" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {employeurs.map((e) => (
-                      <SelectItem key={e.id} value={e.id}>{e.nom}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="rounded-md bg-muted px-3 py-2 text-sm font-medium">
+                  ASECNA
+                </div>
+                <p className="text-[10px] text-muted-foreground">L'employeur unique pour ce profil est l'ASECNA.</p>
               </div>
 
               <div className="space-y-2">
@@ -688,6 +735,54 @@ export default function AgentProfile() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Security Section (Change Password) */}
+        {agent && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Securité du compte
+              </CardTitle>
+              <CardDescription>
+                Modifiez votre mot de passe pour securiser votre acces
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="currentPassword">Mot de passe actuel</Label>
+                  <Input 
+                    id="currentPassword" 
+                    type="password" 
+                    placeholder="••••••••"
+                    value={passwords.current}
+                    onChange={(e) => setPasswords(p => ({ ...p, current: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword">Nouveau mot de passe</Label>
+                  <Input 
+                    id="newPassword" 
+                    type="password" 
+                    placeholder="••••••••"
+                    value={passwords.new}
+                    onChange={(e) => setPasswords(p => ({ ...p, new: e.target.value }))}
+                  />
+                </div>
+              </div>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={handlePasswordChange}
+                disabled={isChangingPassword}
+              >
+                {isChangingPassword ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Mettre à jour le mot de passe
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="mt-6 flex justify-end">
           <Button type="submit" disabled={isSaving} size="lg">

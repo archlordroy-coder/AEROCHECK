@@ -5,6 +5,7 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { randomUUID } from 'crypto';
 import { fileURLToPath } from 'url';
+import { asecnaAeroports, asecnaPays } from './seed-asecna-data.js';
 import type {
   Agent,
   AgentStatus,
@@ -13,6 +14,8 @@ import type {
   LicenseStatus,
   Role,
   User,
+  Notification,
+  AuditLog,
 } from '../shared/types/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -38,6 +41,8 @@ interface DataStore {
   employeurs: ReferenceItem[];
   pays: ReferenceItem[];
   aeroports: ReferenceItem[];
+  notifications: Notification[];
+  auditLogs: AuditLog[];
 }
 
 type ReferenceKind = 'nationalites' | 'employeurs' | 'pays' | 'aeroports';
@@ -195,6 +200,24 @@ function ensureSchema() {
       pays_id TEXT,
       PRIMARY KEY (kind, id)
     );
+
+    CREATE TABLE IF NOT EXISTS notifications (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      message TEXT NOT NULL,
+      read INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      action TEXT NOT NULL,
+      target_id TEXT,
+      details TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
   `);
 }
 
@@ -220,6 +243,8 @@ function seedIfEmpty() {
     makeUser('user-qip', 'QIP', 'qip1@aerocheck.com', 'Awa', 'QIP', { paysId: 'pays-cm' }),
     makeUser('user-dlaa', 'DLAA', 'dlaa1@aerocheck.com', 'Moussa', 'DLAA', { aeroportId: 'apt-dla' }),
     makeUser('user-dna', 'DNA', 'dna@aerocheck.com', 'Nadia', 'DNA'),
+    makeUser('user-ena', 'ENA', 'ena@aerocheck.com', 'Eric', 'ENA', { aeroportId: 'apt-dla' }),
+    makeUser('user-suprep', 'SUP_REP', 'suprep@aerocheck.com', 'Saliou', 'Representant', { paysId: 'pays-cm' }),
     makeUser('user-agent', 'AGENT', 'agent1@test.com', 'Boris', 'Mendo'),
   ];
 
@@ -277,23 +302,76 @@ function seedIfEmpty() {
 
   const references = {
     nationalites: [
-      { id: 'nat-cm', code: 'CM', nom: 'Cameroun' },
-      { id: 'nat-sn', code: 'SN', nom: 'Senegal' },
-      { id: 'nat-ga', code: 'GA', nom: 'Gabon' },
+      { id: 'nat-bj', code: 'BJ', nom: 'Béninois' },
+      { id: 'nat-bf', code: 'BF', nom: 'Burkinabé' },
+      { id: 'nat-cm', code: 'CM', nom: 'Camerounais' },
+      { id: 'nat-cf', code: 'CF', nom: 'Centrafricain' },
+      { id: 'nat-km', code: 'KM', nom: 'Comorien' },
+      { id: 'nat-cg', code: 'CG', nom: 'Congolais' },
+      { id: 'nat-ci', code: 'CI', nom: 'Ivoirien' },
+      { id: 'nat-dj', code: 'DJ', nom: 'Djiboutien' },
+      { id: 'nat-gq', code: 'GQ', nom: 'Équato-guinéen' },
+      { id: 'nat-ga', code: 'GA', nom: 'Gabonais' },
+      { id: 'nat-gw', code: 'GW', nom: 'Bissau-guinéen' },
+      { id: 'nat-mg', code: 'MG', nom: 'Malgache' },
+      { id: 'nat-ml', code: 'ML', nom: 'Malien' },
+      { id: 'nat-mr', code: 'MR', nom: 'Mauritanien' },
+      { id: 'nat-ne', code: 'NE', nom: 'Nigérien' },
+      { id: 'nat-rw', code: 'RW', nom: 'Rwandais' },
+      { id: 'nat-sn', code: 'SN', nom: 'Sénégalais' },
+      { id: 'nat-td', code: 'TD', nom: 'Tchadien' },
+      { id: 'nat-tg', code: 'TG', nom: 'Togolais' },
     ],
     employeurs: [
       { id: 'emp-asecna', nom: 'ASECNA' },
-      { id: 'emp-adc', nom: 'ADC' },
     ],
     pays: [
+      { id: 'pays-bj', code: 'BJ', nom: 'Bénin', nomFr: 'Bénin' },
+      { id: 'pays-bf', code: 'BF', nom: 'Burkina Faso', nomFr: 'Burkina Faso' },
       { id: 'pays-cm', code: 'CM', nom: 'Cameroun', nomFr: 'Cameroun' },
-      { id: 'pays-sn', code: 'SN', nom: 'Senegal', nomFr: 'Senegal' },
+      { id: 'pays-cf', code: 'CF', nom: 'Centrafrique', nomFr: 'Centrafrique' },
+      { id: 'pays-km', code: 'KM', nom: 'Comores', nomFr: 'Comores' },
+      { id: 'pays-cg', code: 'CG', nom: 'Congo', nomFr: 'Congo' },
+      { id: 'pays-ci', code: 'CI', nom: "Côte d'Ivoire", nomFr: "Côte d'Ivoire" },
+      { id: 'pays-rw', code: 'RW', nom: 'Rwanda', nomFr: 'Rwanda' },
+      { id: 'pays-gq', code: 'GQ', nom: 'Guinée Équatoriale', nomFr: 'Guinée Équatoriale' },
       { id: 'pays-ga', code: 'GA', nom: 'Gabon', nomFr: 'Gabon' },
+      { id: 'pays-gw', code: 'GW', nom: 'Guinée-Bissau', nomFr: 'Guinée-Bissau' },
+      { id: 'pays-mg', code: 'MG', nom: 'Madagascar', nomFr: 'Madagascar' },
+      { id: 'pays-ml', code: 'ML', nom: 'Mali', nomFr: 'Mali' },
+      { id: 'pays-mr', code: 'MR', nom: 'Mauritanie', nomFr: 'Mauritanie' },
+      { id: 'pays-ne', code: 'NE', nom: 'Niger', nomFr: 'Niger' },
+      { id: 'pays-sn', code: 'SN', nom: 'Sénégal', nomFr: 'Sénégal' },
+      { id: 'pays-td', code: 'TD', nom: 'Tchad', nomFr: 'Tchad' },
+      { id: 'pays-tg', code: 'TG', nom: 'Togo', nomFr: 'Togo' },
     ],
     aeroports: [
+      { id: 'apt-coo', code: 'COO', nom: 'Cotonou Cadjehoun', ville: 'Cotonou', paysId: 'pays-bj' },
+      { id: 'apt-oua', code: 'OUA', nom: 'Ouagadougou', ville: 'Ouagadougou', paysId: 'pays-bf' },
+      { id: 'apt-boy', code: 'BOY', nom: 'Bobo-Dioulasso', ville: 'Bobo-Dioulasso', paysId: 'pays-bf' },
       { id: 'apt-dla', code: 'DLA', nom: 'Douala International', ville: 'Douala', paysId: 'pays-cm' },
-      { id: 'apt-nbo', code: 'NSI', nom: 'Yaounde Nsimalen', ville: 'Yaounde', paysId: 'pays-cm' },
-      { id: 'apt-dkr', code: 'DKR', nom: 'Blaise Diagne', ville: 'Dakar', paysId: 'pays-sn' },
+      { id: 'apt-nsi', code: 'NSI', nom: 'Yaoundé-Nsimalen', ville: 'Yaoundé', paysId: 'pays-cm' },
+      { id: 'apt-gou', code: 'GOU', nom: 'Garoua', ville: 'Garoua', paysId: 'pays-cm' },
+      { id: 'apt-mvr', code: 'MVR', nom: 'Maroua-Salak', ville: 'Maroua', paysId: 'pays-cm' },
+      { id: 'apt-bgf', code: 'BGF', nom: "Bangui M'Poko", ville: 'Bangui', paysId: 'pays-cf' },
+      { id: 'apt-hah', code: 'HAH', nom: 'Moroni Prince Said Ibrahim', ville: 'Moroni', paysId: 'pays-km' },
+      { id: 'apt-bzv', code: 'BZV', nom: 'Brazzaville Maya-Maya', ville: 'Brazzaville', paysId: 'pays-cg' },
+      { id: 'apt-pnr', code: 'PNR', nom: 'Pointe-Noire Antonio-Agostinho-Neto', ville: 'Pointe-Noire', paysId: 'pays-cg' },
+      { id: 'apt-abj', code: 'ABJ', nom: "Abidjan Félix Houphouët-Boigny", ville: 'Abidjan', paysId: 'pays-ci' },
+      { id: 'apt-lbv', code: 'LBV', nom: "Libreville Léon M'ba", ville: 'Libreville', paysId: 'pays-ga' },
+      { id: 'apt-pog', code: 'POG', nom: 'Port-Gentil', ville: 'Port-Gentil', paysId: 'pays-ga' },
+      { id: 'apt-oxb', code: 'OXB', nom: 'Bissau Osvaldo Vieira', ville: 'Bissau', paysId: 'pays-gw' },
+      { id: 'apt-ssg', code: 'SSG', nom: 'Malabo', ville: 'Malabo', paysId: 'pays-gq' },
+      { id: 'apt-bsg', code: 'BSG', nom: 'Bata', ville: 'Bata', paysId: 'pays-gq' },
+      { id: 'apt-tnr', code: 'TNR', nom: 'Antananarivo Ivato', ville: 'Antananarivo', paysId: 'pays-mg' },
+      { id: 'apt-nos', code: 'NOS', nom: 'Nosy Be Fascene', ville: 'Nosy Be', paysId: 'pays-mg' },
+      { id: 'apt-tmm', code: 'TMM', nom: 'Toamasina Ambalamanasy', ville: 'Toamasina', paysId: 'pays-mg' },
+      { id: 'apt-bko', code: 'BKO', nom: 'Bamako Senou', ville: 'Bamako', paysId: 'pays-ml' },
+      { id: 'apt-nkc', code: 'NKC', nom: 'Nouakchott-Oumtounsy', ville: 'Nouakchott', paysId: 'pays-mr' },
+      { id: 'apt-nim', code: 'NIM', nom: 'Niamey Diori Hamani', ville: 'Niamey', paysId: 'pays-ne' },
+      { id: 'apt-dss', code: 'DSS', nom: 'Dakar Blaise Diagne', ville: 'Dakar', paysId: 'pays-sn' },
+      { id: 'apt-ndj', code: 'NDJ', nom: 'N\'Djamena Hassan Djamous', ville: 'N\'Djamena', paysId: 'pays-td' },
+      { id: 'apt-lfw', code: 'LFW', nom: 'Lomé Gnassingbé Eyadéma', ville: 'Lomé', paysId: 'pays-tg' },
     ],
   } satisfies Record<string, ReferenceItem[]>;
 
@@ -328,6 +406,12 @@ function seedIfEmpty() {
   const insertReference = sqlite.prepare(`
     INSERT INTO references_data (kind, id, code, nom, nom_fr, ville, pays_id)
     VALUES (@kind, @id, @code, @nom, @nomFr, @ville, @paysId)
+    ON CONFLICT(kind, id) DO UPDATE SET
+      code = excluded.code,
+      nom = excluded.nom,
+      nom_fr = excluded.nom_fr,
+      ville = excluded.ville,
+      pays_id = excluded.pays_id
   `);
 
   const transaction = sqlite.transaction(() => {
@@ -373,6 +457,76 @@ function seedIfEmpty() {
   });
 
   transaction();
+  
+  // Also seed ASECNA references
+  seedAsecnaReferences();
+}
+
+/**
+ * Specifically seed ASECNA references even if the DB is already initialized
+ */
+export function seedAsecnaReferences() {
+  const references = {
+    nationalites: [
+      { id: 'nat-bj', code: 'BJ', nom: 'Béninois' },
+      { id: 'nat-bf', code: 'BF', nom: 'Burkinabé' },
+      { id: 'nat-cm', code: 'CM', nom: 'Camerounais' },
+      { id: 'nat-cf', code: 'CF', nom: 'Centrafricain' },
+      { id: 'nat-km', code: 'KM', nom: 'Comorien' },
+      { id: 'nat-cg', code: 'CG', nom: 'Congolais' },
+      { id: 'nat-ci', code: 'CI', nom: 'Ivoirien' },
+      { id: 'nat-fr', code: 'FR', nom: 'Français' },
+      { id: 'nat-ga', code: 'GA', nom: 'Gabonais' },
+      { id: 'nat-gw', code: 'GW', nom: 'Bissau-Guinéen' },
+      { id: 'nat-gq', code: 'GQ', nom: 'Équato-Guinéen' },
+      { id: 'nat-mg', code: 'MG', nom: 'Malgache' },
+      { id: 'nat-ml', code: 'ML', nom: 'Malien' },
+      { id: 'nat-mr', code: 'MR', nom: 'Mauritanien' },
+      { id: 'nat-ne', code: 'NE', nom: 'Nigérien' },
+      { id: 'nat-sn', code: 'SN', nom: 'Sénégalais' },
+      { id: 'nat-td', code: 'TD', nom: 'Tchadien' },
+      { id: 'nat-tg', code: 'TG', nom: 'Togolais' },
+    ],
+    employeurs: [
+      { id: 'emp-asecna', nom: 'ASECNA' },
+    ],
+    pays: asecnaPays,
+    aeroports: asecnaAeroports,
+  };
+
+  const insertReference = sqlite.prepare(`
+    INSERT INTO references_data (kind, id, code, nom, nom_fr, ville, pays_id)
+    VALUES (@kind, @id, @code, @nom, @nomFr, @ville, @paysId)
+    ON CONFLICT(kind, id) DO UPDATE SET
+      code = excluded.code,
+      nom = excluded.nom,
+      nom_fr = excluded.nom_fr,
+      ville = excluded.ville,
+      pays_id = excluded.pays_id
+  `);
+
+  sqlite.transaction(() => {
+    // Purge contrôlée: ne l'activer qu'une seule fois (pour ne pas effacer les ajouts admin)
+    if (process.env.ASECNA_PURGE === '1') {
+      sqlite.prepare("DELETE FROM references_data WHERE kind IN ('pays','aeroports')").run();
+    }
+
+    for (const [kind, items] of Object.entries(references)) {
+      for (const item of items as any[]) {
+        insertReference.run({
+          kind,
+          id: item.id,
+          code: item.code || null,
+          nom: item.nom,
+          nomFr: item.nomFr || null,
+          ville: item.ville || null,
+          paysId: item.paysId || null,
+        });
+      }
+    }
+  })();
+  
+  refreshStore();
 }
 
 function loadUsers(): UserRecord[] {
@@ -477,6 +631,8 @@ function loadStore(): DataStore {
     employeurs: loadReferences('employeurs'),
     pays: loadReferences('pays'),
     aeroports: loadReferences('aeroports'),
+    notifications: loadNotifications(),
+    auditLogs: loadAuditLogs(),
   };
 }
 
@@ -489,6 +645,8 @@ function replaceStore(next: DataStore) {
   store.employeurs = next.employeurs;
   store.pays = next.pays;
   store.aeroports = next.aeroports;
+  store.notifications = next.notifications;
+  store.auditLogs = next.auditLogs;
 }
 
 function refreshStore() {
@@ -636,6 +794,50 @@ function persistReference(kind: ReferenceKind, item: ReferenceItem) {
     ville: item.ville ?? null,
     paysId: item.paysId ?? null,
   });
+}
+
+function persistNotification(notif: Notification) {
+  sqlite.prepare(`
+    INSERT INTO notifications (id, user_id, title, message, read, created_at)
+    VALUES (@id, @userId, @title, @message, @read, @createdAt)
+  `).run({
+    ...notif,
+    read: notif.read ? 1 : 0
+  });
+}
+
+function persistAuditLog(log: AuditLog) {
+  sqlite.prepare(`
+    INSERT INTO audit_logs (id, user_id, action, target_id, details, created_at)
+    VALUES (@id, @userId, @action, @targetId, @details, @createdAt)
+  `).run({
+    ...log,
+    targetId: log.targetId ?? null
+  });
+}
+
+function loadNotifications(): Notification[] {
+  const rows = sqlite.prepare('SELECT * FROM notifications ORDER BY created_at DESC').all() as any[];
+  return rows.map(r => ({
+    id: r.id,
+    userId: r.user_id,
+    title: r.title,
+    message: r.message,
+    read: r.read === 1,
+    createdAt: r.created_at
+  }));
+}
+
+function loadAuditLogs(): AuditLog[] {
+  const rows = sqlite.prepare('SELECT * FROM audit_logs ORDER BY created_at DESC').all() as any[];
+  return rows.map(r => ({
+    id: r.id,
+    userId: r.user_id,
+    action: r.action,
+    targetId: r.target_id,
+    details: r.details,
+    createdAt: r.created_at
+  }));
 }
 
 function deleteById(table: 'agents' | 'documents' | 'licenses', id: string) {
@@ -828,6 +1030,8 @@ export function getRelations() {
     employeurs: store.employeurs,
     pays: store.pays,
     aeroports: store.aeroports,
+    notifications: store.notifications,
+    auditLogs: store.auditLogs,
   };
 }
 
@@ -868,20 +1072,29 @@ export function updateAgentDerivedStatus(agentId: string): void {
   if (!agent) return;
 
   const agentDocuments = store.documents.filter((document) => document.agentId === agentId);
-  const allValidated = agentDocuments.length > 0 && agentDocuments.every((document) => document.status === 'VALIDE');
+  const totalRequired = 3; // Minimal required docs
   const hasRejected = agentDocuments.some((document) => document.status === 'REJETE');
+  const allFinalValide = agentDocuments.length >= totalRequired && agentDocuments.every((document) => document.status === 'VALIDE');
+  const allQIPValide = agentDocuments.length >= totalRequired && agentDocuments.every((document) => document.status === 'VALIDE' || document.status === 'EN_ATTENTE_DLAA');
 
   let nextStatus: AgentStatus = agent.status;
+  
   if (hasRejected) {
-    nextStatus = 'QIP_REJETE';
-  } else if (allValidated) {
+    nextStatus = 'EN_ATTENTE'; // Go back to pending submission/correction
+  } else if (allFinalValide) {
+    nextStatus = 'LICENCE_ACTIVE';
+  } else if (allQIPValide) {
     nextStatus = 'QIP_VALIDE';
   } else if (agentDocuments.length > 0) {
     nextStatus = 'DOCUMENTS_SOUMIS';
+  } else {
+    nextStatus = 'EN_ATTENTE';
   }
 
-  agent.status = nextStatus;
-  upsertAgent(touch(agent));
+  if (nextStatus !== agent.status) {
+    agent.status = nextStatus;
+    upsertAgent(touch(agent));
+  }
 }
 
 export function updateLicenseDerivedStatus(license: License): License {
@@ -929,3 +1142,45 @@ export const dbHelpers = {
     return undefined;
   },
 };
+
+export function addNotification(userId: string, title: string, message: string): Notification {
+  const notif: Notification = {
+    id: createId('notif'),
+    userId,
+    title,
+    message,
+    read: false,
+    createdAt: new Date().toISOString()
+  };
+  persistNotification(notif);
+  refreshStore();
+  return notif;
+}
+
+export function listNotifications(userId: string): Notification[] {
+  return store.notifications.filter(n => n.userId === userId);
+}
+
+export function markNotificationRead(id: string): void {
+  sqlite.prepare('UPDATE notifications SET read = 1 WHERE id = ?').run(id);
+  refreshStore();
+}
+
+export function addAuditLog(userId: string, action: string, details: string, targetId?: string): AuditLog {
+  const log: AuditLog = {
+    id: createId('log'),
+    userId,
+    action,
+    targetId,
+    details,
+    createdAt: new Date().toISOString()
+  };
+  persistAuditLog(log);
+  refreshStore();
+  return log;
+}
+
+export function listAuditLogs(userId?: string): AuditLog[] {
+  if (userId) return store.auditLogs.filter(l => l.userId === userId);
+  return store.auditLogs;
+}

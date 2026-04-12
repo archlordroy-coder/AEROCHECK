@@ -25,6 +25,7 @@ const DocumentVerify = lazy(() => import("@/pages/documents/DocumentVerify"));
 const LicenseIssue = lazy(() => import("@/pages/licenses/LicenseIssue"));
 const LicenseView = lazy(() => import("@/pages/licenses/LicenseView"));
 const UserManagement = lazy(() => import("@/pages/admin/UserManagement"));
+const MonitoringDashboard = lazy(() => import("@/pages/dashboard/MonitoringDashboard"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -103,6 +104,9 @@ function DashboardRouter() {
       return <SuperviseurDashboard />;
     case 'SUPER_ADMIN':
       return <AdminDashboard />;
+    case 'ENA':
+    case 'SUP_REP':
+      return <MonitoringDashboard />;
     default:
       return <AgentDashboard />;
   }
@@ -144,6 +148,7 @@ const AppRoutes = () => (
         
         {/* Agent routes */}
         <Route path="profile" element={<AgentProfile />} />
+        <Route path="agent/dashboard" element={<AgentDashboard />} />
         <Route path="documents/submit" element={<DocumentSubmit />} />
         <Route path="license" element={<LicenseView />} />
 
@@ -173,6 +178,23 @@ const AppRoutes = () => (
         <Route path="dlaa/issue/:id" element={
           <ProtectedRoute roles={['DLAA', 'SUPER_ADMIN', 'DNA']}>
             <LicenseIssue />
+          </ProtectedRoute>
+        } />
+
+        {/* Monitoring roles routes */}
+        <Route path="monitoring/airport" element={
+          <ProtectedRoute roles={['ENA', 'SUPER_ADMIN']}>
+            <MonitoringDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="monitoring/country" element={
+          <ProtectedRoute roles={['SUP_REP', 'SUPER_ADMIN']}>
+            <MonitoringDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="monitoring/asecna" element={
+          <ProtectedRoute roles={['SUPER_ADMIN']}>
+            <MonitoringDashboard />
           </ProtectedRoute>
         } />
 

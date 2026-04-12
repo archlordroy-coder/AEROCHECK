@@ -157,4 +157,46 @@
   .text-pretty {
     text-wrap: pretty;
   }
+
+  .glass-panel {
+    @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl;
+  }
+
+  .glass-card {
+    @apply bg-white/40 backdrop-blur-lg border border-white/30 shadow-lg hover:shadow-xl transition-all duration-300;
+  }
+
+  .dark .glass-panel {
+    @apply bg-slate-900/70 backdrop-blur-md border border-slate-800/30;
+  }
+
+  .dark .glass-card {
+    @apply bg-slate-900/40 backdrop-blur-lg border border-slate-800/40 shadow-2xl;
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-pulse-subtle {
+    animation: pulse-subtle 3s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  @keyframes pulse-subtle {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.85; transform: scale(1.02); }
+  }
+
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent;
+  }
+  
+  .premium-shadow {
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  }
 }

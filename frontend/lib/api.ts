@@ -12,6 +12,7 @@ import type {
   Role,
   DocStatus,
   LicenseStatus as SharedLicenseStatus,
+  Notification as AppNotification,
 } from '@shared/types';
 import type { HealthResponse, OverviewResponse } from '@shared/api';
 
@@ -21,12 +22,32 @@ export type DocumentStatus = DocStatus;
 export type LicenseStatus = SharedLicenseStatus;
 export { DOC_STATUS_LABELS, LICENSE_STATUS_LABELS } from '@shared/types';
 
-const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+const VITE_API_URL = import.meta.env.VITE_API_URL || "";
+const IS_DEV = import.meta.env.DEV;
+
+// Helper to get normalized API path
+function getApiPath(path: string): string {
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  
+  // In development, we use Vite's proxy (/api -> backend)
+  if (IS_DEV) {
+    return cleanPath;
+  }
+  
+  // In production, we use the PHP proxy if VITE_API_URL is set (e.g., to "/index.php")
+  if (VITE_API_URL) {
+    const baseUrl = VITE_API_URL.replace(/\/$/, "");
+    return `${baseUrl}${cleanPath}`;
+  }
+  
+  // Fallback to relative path
+  return cleanPath;
+}
 
 export function resolveApiAssetUrl(assetPath?: string | null): string | undefined {
   if (!assetPath) return undefined;
   if (/^https?:\/\//i.test(assetPath)) return assetPath;
-  return API_URL ? `${API_URL}${assetPath}` : assetPath;
+  return VITE_API_URL ? `${VITE_API_URL.replace(/\/$/, "")}${assetPath}` : assetPath;
 }
 
 // Get stored token
@@ -64,7 +85,7 @@ async function request<T>(
     (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await fetch(getApiPath(path), {
     ...options,
     headers,
   });
@@ -276,6 +297,14 @@ export const statsApi = {
     usersParRole: Record<string, number>;
     recentUsers: User[];
   }>>('/api/stats/users'),
+};
+
+// Notifications API
+export const notificationsApi = {
+  list: () => request<ApiResponse<AppNotification[]>>('/api/notifications'),
+  markAsRead: (id: string) => request<ApiResponse<void>>(`/api/notifications/${id}/read`, {
+    method: 'POST'
+  }),
 };
 
 // References API

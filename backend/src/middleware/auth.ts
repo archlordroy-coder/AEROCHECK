@@ -3,7 +3,9 @@ import jwt from 'jsonwebtoken';
 import { dbHelpers } from '../db.js';
 import type { Role } from '../../shared/types/index.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'aerocheck-secret-key-2024';
+const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' 
+  ? (() => { throw new Error('JWT_SECRET must be set in production'); })() 
+  : 'aerocheck-dev-secret-key-2024');
 
 export interface AuthRequest extends Request {
   user?: {

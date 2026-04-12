@@ -6,7 +6,7 @@ import type { RegisterRequest, Role } from '../../shared/types/index.js';
 import { asTrimmedString, pickEnumValue, parseBoolean } from '../utils/validators.js';
 
 const router = express.Router();
-const ROLES = ['AGENT', 'QIP', 'DLAA', 'DNA', 'SUPER_ADMIN'] as const satisfies readonly Role[];
+const ROLES = ['AGENT', 'QIP', 'DLAA', 'DNA', 'SUPER_ADMIN', 'ENA', 'SUP_REP'] as const satisfies readonly Role[];
 
 router.post('/login', (req, res) => {
   const email = asTrimmedString(req.body?.email)?.toLowerCase();
@@ -53,6 +53,14 @@ router.post('/register', (req, res) => {
   if (getUserRecordByEmail(email)) {
     res.status(409).json({ success: false, error: 'Cet email existe deja' });
     return;
+  }
+
+  if (role === 'QIP' || role === 'DLAA') {
+    const existingRoleHolder = listUsers().find(u => u.role === role && u.paysId === payload.paysId && u.isActive);
+    if (existingRoleHolder) {
+      res.status(400).json({ success: false, error: `Il existe déjà un utilisateur avec le rôle ${role} pour ce pays` });
+      return;
+    }
   }
 
   const user = addUser({
@@ -134,9 +142,23 @@ router.patch('/users/:id', authenticate, authorize('SUPER_ADMIN', 'DNA'), (req, 
     return;
   }
 
+  const nextRoleValue = nextRole ?? user.role;
+  const nextPaysIdValue = asTrimmedString(req.body?.paysId) ?? user.paysId;
+
+  if (nextRoleValue === 'QIP' || nextRoleValue === 'DLAA') {
+    const existingRoleHolder = listUsers().find(u => u.role === nextRoleValue && u.paysId === nextPaysIdValue && u.id !== user.id && u.isActive);
+    if (existingRoleHolder) {
+      res.status(400).json({ success: false, error: `Il existe déjà un utilisateur avec le rôle ${nextRoleValue} pour ce pays` });
+      return;
+    }
+  }
+
   if (nextFirstName) user.firstName = nextFirstName;
   if (nextLastName) user.lastName = nextLastName;
   if (nextRole) user.role = nextRole;
+  if (asTrimmedString(req.body?.paysId)) user.paysId = asTrimmedString(req.body?.paysId);
+  if (asTrimmedString(req.body?.aeroportId)) user.aeroportId = asTrimmedString(req.body?.aeroportId);
+  
   user.updatedAt = new Date().toISOString();
   const savedUser = saveUser(user);
 
@@ -161,6 +183,27 @@ router.patch('/users/:id/status', authenticate, authorize('SUPER_ADMIN', 'DNA'),
   const savedUser = saveUser(user);
 
   res.json({ success: true, data: { ...sanitizeUser(savedUser), isActive: savedUser.isActive } });
+});
+
+router.post('/change-password', authenticate, (req: AuthRequest, res) => {
+  const { currentPassword, newPassword } = req.body;
+  
+  if (!currentPassword || !newPassword) {
+    res.status(400).json({ success: false, error: 'Mot de passe actuel et nouveau requis' });
+    return;
+  }
+
+  const user = getUserRecordById(req.user!.id);
+  if (!user || !verifyPassword(currentPassword, user.passwordHash)) {
+    res.status(401).json({ success: false, error: 'Mot de passe actuel incorrect' });
+    return;
+  }
+
+  user.passwordHash = bcrypt.hashSync(newPassword, 10);
+  user.updatedAt = new Date().toISOString();
+  saveUser(user);
+
+  res.json({ success: true, message: 'Mot de passe mis a jour avec succes' });
 });
 
 export default router;

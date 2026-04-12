@@ -18,7 +18,7 @@ import { getLicenseMonitoringDate } from '@/lib/license-validity';
 
 const QUALIFICATIONS_OPTIONS = ['ADC', 'APP', 'APS', 'ACP', 'ACS', 'ARP'];
 const GRADES = ['STAGIAIRE', 'CADET', 'JUNIOR', 'SENIOR'] as const;
-const POSTES_ADMIN = ['AUCUN', 'CHEF_UNITE_ENF', 'ENA', 'QIP', 'CHARGE_EN_ROUTE', 'CHARGE_EXPLOITATION_NA'] as const;
+const POSTES_ADMIN = ['AUCUN', 'ATCO', 'CHEF_UNITE_ENF', 'ENA', 'QIP', 'CHARGE_EN_ROUTE', 'CHARGE_EXPLOITATION_NA'] as const;
 const LICENSE_STATUSES = ['VALIDE', 'EXPIREE', 'SUSPENDUE'] as const;
 
 interface Nationalite {
@@ -639,6 +639,7 @@ export default function AgentProfile() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="AUCUN">NULL</SelectItem>
+                    <SelectItem value="ATCO">ATCO</SelectItem>
                     <SelectItem value="CHEF_UNITE_ENF">Chef unite ENF</SelectItem>
                     <SelectItem value="ENA">ENA</SelectItem>
                     <SelectItem value="QIP">QIP</SelectItem>

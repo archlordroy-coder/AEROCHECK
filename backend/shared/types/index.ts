@@ -51,7 +51,7 @@ export interface Agent {
   fonction: string;
   grade?: 'STAGIAIRE' | 'CADET' | 'JUNIOR' | 'SENIOR';
   instructeur?: boolean;
-  posteAdministratif?: 'CHEF_UNITE_ENF' | 'ENA' | 'QIP' | 'CHARGE_EN_ROUTE' | 'CHARGE_EXPLOITATION_NA' | 'AUCUN';
+  posteAdministratif?: 'ATCO' | 'CHEF_UNITE_ENF' | 'ENA' | 'QIP' | 'CHARGE_EN_ROUTE' | 'CHARGE_EXPLOITATION_NA' | 'AUCUN';
   employeurId: string;
   paysId: string;
   aeroportId: string;

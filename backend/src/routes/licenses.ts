@@ -13,14 +13,8 @@ function canManageLicenses(req: AuthRequest): boolean {
   return req.user?.role === 'DLAA' || req.user?.role === 'DNA' || req.user?.role === 'SUPER_ADMIN';
 }
 
-function requiresJustificatif(agent: Pick<Agent, 'instructeur' | 'posteAdministratif'>): boolean {
-  return Boolean(agent.instructeur || (agent.posteAdministratif && agent.posteAdministratif !== 'AUCUN'));
-}
-
-function getRequiredDocumentTypes(agent: Agent) {
-  return requiresJustificatif(agent)
-    ? [...PRIORITY_DOCUMENT_TYPES, 'JUSTIFICATIF_NOMINATION' as const]
-    : [...PRIORITY_DOCUMENT_TYPES];
+function getRequiredDocumentTypes(_agent: Agent) {
+  return [...PRIORITY_DOCUMENT_TYPES];
 }
 
 function isDocumentExpired(document: Document) {

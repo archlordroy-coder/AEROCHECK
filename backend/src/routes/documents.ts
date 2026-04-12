@@ -16,7 +16,7 @@ function parseEnglishLevel(value: unknown): 4 | 5 | 6 | undefined {
 }
 
 const router = express.Router();
-const DOCUMENT_TYPES = ['CERTIFICAT_MEDICAL', 'CONTROLE_COMPETENCE', 'NIVEAU_ANGLAIS', 'JUSTIFICATIF_NOMINATION'] as const;
+const DOCUMENT_TYPES = ['CERTIFICAT_MEDICAL', 'CONTROLE_COMPETENCE', 'NIVEAU_ANGLAIS'] as const;
 const DOCUMENT_STATUSES = ['EN_ATTENTE', 'VALIDE', 'REJETE', 'EXPIRE', 'EN_ATTENTE_DLAA'] as const;
 const VALIDATION_STATUSES = ['VALIDE', 'REJETE', 'EN_ATTENTE_DLAA'] as const;
 
@@ -60,9 +60,6 @@ function safelyDeleteUploadedFile(filePath?: string) {
   }
 }
 
-function requiresJustificatif(agent: Pick<Agent, 'instructeur' | 'posteAdministratif'>): boolean {
-  return Boolean(agent.instructeur || (agent.posteAdministratif && agent.posteAdministratif !== 'AUCUN'));
-}
 
 function getRelevantDocuments(agentId?: string) {
   const base = getStore().documents;
@@ -105,10 +102,6 @@ function computeDocumentExpiry(agent: Agent, type: typeof DOCUMENT_TYPES[number]
     if (englishLevel === 6) {
       expiresAt = undefined;
     }
-  }
-
-  if (type === 'JUSTIFICATIF_NOMINATION') {
-    expiresAt = undefined;
   }
 
   return expiresAt;
@@ -310,19 +303,13 @@ router.post('/', authenticate, upload.single('file'), (req: AuthRequest, res) =>
     return;
   }
 
-  if (type === 'JUSTIFICATIF_NOMINATION' && !requiresJustificatif(agent)) {
-    safelyDeleteUploadedFile(req.file.path);
-    res.status(400).json({ success: false, error: 'Le justificatif n est requis que pour les instructeurs et postes administratifs' });
-    return;
-  }
-
   const document: Document = {
     id: createId('doc'),
     agentId: agent.id,
     type,
     fileName: req.file.originalname,
     filePath: path.relative(process.cwd(), req.file.path).replace(/\\/g, '/'),
-    status: (req.user?.role === 'QIP' && type !== 'JUSTIFICATIF_NOMINATION') ? 'EN_ATTENTE_DLAA' : 'EN_ATTENTE',
+    status: req.user?.role === 'QIP' ? 'EN_ATTENTE_DLAA' : 'EN_ATTENTE',
     issuedAt,
     expiresAt: computeDocumentExpiry(agent, type, issuedAt, englishLevel),
     englishLevel,
@@ -360,12 +347,6 @@ router.post('/:id/verify', authenticate, (req: AuthRequest, res) => {
   const document = getDocumentById(req.params.id);
   if (!document) {
     res.status(404).json({ success: false, error: 'Document introuvable' });
-    return;
-  }
-
-  // PROMOTIONAL RULE: Nomination justification can ONLY be validated by Admin
-  if (document.type === 'JUSTIFICATIF_NOMINATION' && req.user?.role !== 'SUPER_ADMIN') {
-    res.status(403).json({ success: false, error: 'Sequestre administratif: Seul un Administrateur peut verifier le justificatif de nomination' });
     return;
   }
 

@@ -48,14 +48,8 @@ interface DataStore {
 type ReferenceKind = 'nationalites' | 'employeurs' | 'pays' | 'aeroports';
 const PRIORITY_LICENSE_DOCUMENT_TYPES = ['CERTIFICAT_MEDICAL', 'CONTROLE_COMPETENCE', 'NIVEAU_ANGLAIS'] as const;
 
-function requiresLicenseJustificatif(agent: Pick<Agent, 'instructeur' | 'posteAdministratif'>): boolean {
-  return Boolean(agent.instructeur || (agent.posteAdministratif && agent.posteAdministratif !== 'AUCUN'));
-}
-
 function getRequiredLicenseDocumentTypes(agent: Agent): Document['type'][] {
-  return requiresLicenseJustificatif(agent)
-    ? [...PRIORITY_LICENSE_DOCUMENT_TYPES, 'JUSTIFICATIF_NOMINATION']
-    : [...PRIORITY_LICENSE_DOCUMENT_TYPES];
+  return [...PRIORITY_LICENSE_DOCUMENT_TYPES];
 }
 
 function isDocumentUsableForLicense(document: Document, now = new Date()): boolean {

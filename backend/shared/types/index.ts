@@ -16,7 +16,6 @@ export type DocumentType =
   | 'CERTIFICAT_MEDICAL'
   | 'CONTROLE_COMPETENCE'
   | 'NIVEAU_ANGLAIS'
-  | 'JUSTIFICATIF_NOMINATION'
   | 'PHOTO_IDENTITE';
 
 export type DocStatus = 'EN_ATTENTE' | 'VALIDE' | 'REJETE' | 'EXPIRE' | 'EN_ATTENTE_DLAA';
@@ -197,7 +196,6 @@ export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   CERTIFICAT_MEDICAL: "Certificat medical",
   CONTROLE_COMPETENCE: "Controle de competence",
   NIVEAU_ANGLAIS: "Niveau d'anglais",
-  JUSTIFICATIF_NOMINATION: "Justificatif de nomination",
   PHOTO_IDENTITE: "Photo d'identite"
 };
 
